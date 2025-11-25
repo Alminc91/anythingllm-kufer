@@ -6,6 +6,7 @@ const { ROLES } = require("../utils/middleware/multiUserProtected");
 const { v4: uuidv4 } = require("uuid");
 const { User } = require("./user");
 const { PromptHistory } = require("./promptHistory");
+const { SystemSettings } = require("./systemSettings");
 
 function isNullOrNaN(value) {
   if (value === null) return true;
@@ -36,7 +37,7 @@ const Workspace = {
   defaults: {
     // Default temperature values by provider
     temperature: {
-      mistral: 0,
+      mistral: 0.15,
       default: 0.7
     },
     historyCount: 20,
@@ -45,9 +46,8 @@ const Workspace = {
     chatMode: "chat",
     vectorSearchMode: "default"
   },
-  
-  defaultPrompt:
-    "Given the following conversation, relevant context, and a follow up question, reply with an answer to the current question the user is asking. Return only your response to the question given the above information following the users instructions as needed.",
+
+  defaultPrompt: SystemSettings.saneDefaultSystemPrompt,
 
   // Used for generic updates so we can validate keys in request body
   // commented fields are not writable, but are available on the db object
@@ -222,7 +222,13 @@ const Workspace = {
       slug = this.slugify(`${name}-${slugSeed}`, { lower: true });
     }
 
-    // Default values will be handled by validation functions
+    // Get the default system prompt
+    const defaultSystemPrompt = await SystemSettings.get({
+      label: "default_system_prompt",
+    });
+    if (!!defaultSystemPrompt?.value)
+      additionalFields.openAiPrompt = defaultSystemPrompt.value;
+    else additionalFields.openAiPrompt = this.defaultPrompt;
 
     try {
       const workspace = await prisma.workspaces.create({
