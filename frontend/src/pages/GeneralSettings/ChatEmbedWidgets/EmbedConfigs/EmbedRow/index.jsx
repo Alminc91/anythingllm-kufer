@@ -10,7 +10,7 @@ import EditEmbedModal from "./EditEmbedModal";
 import CodeSnippetModal from "./CodeSnippetModal";
 import moment from "moment";
 
-export default function EmbedRow({ embed, isReadOnly = false }) {
+export default function EmbedRow({ embed, isReadOnly = false, userRole = null }) {
   const rowRef = useRef(null);
   const [enabled, setEnabled] = useState(Number(embed.enabled) === 1);
   const {

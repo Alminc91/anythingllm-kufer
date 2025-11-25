@@ -8,7 +8,8 @@ export default function SettingsButton() {
   const isInSettings = !!useMatch("/settings/*");
   const { user } = useUser();
 
-  if (user && user?.role === "default") return null;
+  // Default users can access settings (for workspace-chats and embed-chat-widgets)
+  const defaultUserSettingsPath = paths.settings.chats();
 
   if (isInSettings)
     return (
@@ -29,10 +30,15 @@ export default function SettingsButton() {
       </div>
     );
 
+  // Default users go to workspace-chats, others go to interface settings
+  const settingsPath = user?.role === "default"
+    ? defaultUserSettingsPath
+    : paths.settings.interface();
+
   return (
     <div className="flex w-fit">
       <Link
-        to={paths.settings.interface()}
+        to={settingsPath}
         className="transition-all duration-300 p-2 rounded-full bg-theme-sidebar-footer-icon hover:bg-theme-sidebar-footer-icon-hover"
         aria-label="Settings"
         data-tooltip-id="footer-item"

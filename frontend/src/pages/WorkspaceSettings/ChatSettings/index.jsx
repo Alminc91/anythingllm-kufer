@@ -11,8 +11,12 @@ import ChatModeSelection from "./ChatModeSelection";
 import WorkspaceLLMSelection from "./WorkspaceLLMSelection";
 import ChatQueryRefusalResponse from "./ChatQueryRefusalResponse";
 import CTAButton from "@/components/lib/CTAButton";
+import useUser from "@/hooks/useUser";
 
 export default function ChatSettings({ workspace }) {
+  const { user } = useUser();
+  // Only admin can modify messagesLimit (billing protection)
+  const isAdmin = user?.role === "admin";
   const [settings, setSettings] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -76,10 +80,12 @@ export default function ChatSettings({ workspace }) {
           workspace={workspace}
           setHasChanges={setHasChanges}
         />
-        <ChatMessagesLimitSettings
-          workspace={workspace}
-          setHasChanges={setHasChanges}
-        />
+        {isAdmin && (
+          <ChatMessagesLimitSettings
+            workspace={workspace}
+            setHasChanges={setHasChanges}
+          />
+        )}
         <ChatPromptSettings
           workspace={workspace}
           setHasChanges={setHasChanges}
