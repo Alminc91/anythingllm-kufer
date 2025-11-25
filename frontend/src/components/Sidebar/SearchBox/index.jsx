@@ -190,7 +190,8 @@ function SearchResultItem({ to, name, hint }) {
 
 function ShortWidthNewWorkspaceButton({ user, showNewWsModal }) {
   const { t } = useTranslation();
-  if (!!user && user?.role === "default") return null;
+  // Only admin can create workspaces (billing protection)
+  if (!!user && user?.role !== "admin") return null;
 
   return (
     <>

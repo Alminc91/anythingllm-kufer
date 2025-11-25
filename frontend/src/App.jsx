@@ -182,7 +182,7 @@ export default function App() {
                   />
                   <Route
                     path="/settings/embed-chat-widgets"
-                    element={<AdminRoute Component={ChatEmbedWidgets} />}
+                    element={<PrivateRoute Component={ChatEmbedWidgets} />}
                   />
                   {/* Manager */}
                   <Route
@@ -225,7 +225,7 @@ export default function App() {
                   />
                   <Route
                     path="/settings/workspace-chats"
-                    element={<ManagerRoute Component={GeneralChats} />}
+                    element={<PrivateRoute Component={GeneralChats} />}
                   />
                   <Route
                     path="/settings/invites"

@@ -1,31 +1,38 @@
 name: anythingllm
 
 networks:
-  anything-llm:
+  anythingllm-kufer:
     driver: bridge
+  traefik-servicenet:
+    external: true
 
 services:
   anything-llm:
-    container_name: anythingllm
-    build:
-      context: ../.
-      dockerfile: ./docker/Dockerfile
-      args:
-        ARG_UID: ${UID:-1000}
-        ARG_GID: ${GID:-1000}
+    container_name: anythingllm-kufer
+    image: anythingllm-kufer:1.9
     cap_add:
       - SYS_ADMIN
     volumes:
       - "./.env:/app/server/.env"
-      - "../server/storage:/app/server/storage"
+      - "vhs-lingen_vhs-lingen_storage:/app/server/storage"
       - "../collector/hotdir/:/app/collector/hotdir"
       - "../collector/outputs/:/app/collector/outputs"
-    user: "${UID:-1000}:${GID:-1000}"
+      - "../frontend/public/embed:/app/frontend/public/embed"  # Fast dev: mount embed files
+    user: "0:0"  # Run as root to access storage
     ports:
       - "3001:3001"
     env_file:
       - .env
     networks:
-      - anything-llm
+      - anythingllm-kufer
+      - traefik-servicenet
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.anythingllm-kufer.rule=Host(`anythingllm-kufer.ki.kufer.de`)"
+      - "traefik.http.routers.anythingllm-kufer.entrypoints=web-secure"
+      - "traefik.http.routers.anythingllm-kufer.middlewares=secHeaders@file"
+      - "traefik.http.routers.anythingllm-kufer.tls=true"
+      - "traefik.http.routers.anythingllm-kufer.tls.certresolver=tlschallenge"
+      - "traefik.http.services.anythingllm-kufer.loadbalancer.server.port=3001"

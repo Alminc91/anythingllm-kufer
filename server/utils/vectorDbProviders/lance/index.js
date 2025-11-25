@@ -276,6 +276,31 @@ const LanceDb = {
     await table.delete(`id IN (${vectorIds.map((v) => `'${v}'`).join(",")})`);
     return true;
   },
+  deleteBatchFromNamespace: async function (namespace, vectorIds = []) {
+    if (!vectorIds || vectorIds.length === 0) {
+      console.log("LanceDB:deleteBatchFromNamespace - No vectorIds provided");
+      return true;
+    }
+
+    const { client } = await this.connect();
+    const exists = await this.namespaceExists(client, namespace);
+    if (!exists) {
+      console.error(
+        `LanceDB:deleteBatchFromNamespace - namespace ${namespace} does not exist.`
+      );
+      return true;
+    }
+
+    const table = await client.openTable(namespace);
+
+    // Delete all vectors in a single transaction
+    // This is much faster than individual deletions and prevents commit conflicts
+    const idList = vectorIds.map((v) => `'${v}'`).join(",");
+    console.log(`LanceDB:deleteBatchFromNamespace - Deleting ${vectorIds.length} vectors from ${namespace}`);
+
+    await table.delete(`id IN (${idList})`);
+    return true;
+  },
   addDocumentToNamespace: async function (
     namespace,
     documentData = {},

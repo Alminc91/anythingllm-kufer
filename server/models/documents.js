@@ -148,27 +148,59 @@ const Document = {
     const VectorDb = getVectorDbClass();
     if (removals.length === 0) return;
 
+    // Collect all documents to delete first
+    const documentsToDelete = [];
     for (const path of removals) {
       const document = await this.get({
         docpath: path,
         workspaceId: workspace.id,
       });
       if (!document) continue;
-      await VectorDb.deleteDocumentFromNamespace(
-        workspace.slug,
-        document.docId
-      );
+      documentsToDelete.push(document);
+    }
 
-      try {
-        await prisma.workspace_documents.delete({
-          where: { id: document.id, workspaceId: workspace.id },
-        });
-        await prisma.document_vectors.deleteMany({
-          where: { docId: document.docId },
-        });
-      } catch (error) {
-        console.error(error.message);
+    if (documentsToDelete.length === 0) return;
+
+    // Batch delete from vector database if supported
+    if (VectorDb.deleteBatchFromNamespace) {
+      // Use batch deletion (much faster for Lance/vector DBs)
+      const { DocumentVectors } = require("./vectors");
+      const allVectorIds = [];
+
+      for (const document of documentsToDelete) {
+        const vectorRecords = await DocumentVectors.where({ docId: document.docId });
+        allVectorIds.push(...vectorRecords.map(r => r.vectorId));
       }
+
+      if (allVectorIds.length > 0) {
+        await VectorDb.deleteBatchFromNamespace(workspace.slug, allVectorIds);
+      }
+    } else {
+      // Fallback to individual deletions for vector DBs that don't support batching
+      for (const document of documentsToDelete) {
+        await VectorDb.deleteDocumentFromNamespace(
+          workspace.slug,
+          document.docId
+        );
+      }
+    }
+
+    // Batch delete from Prisma database
+    const documentIds = documentsToDelete.map(d => d.id);
+    const docIds = documentsToDelete.map(d => d.docId);
+
+    try {
+      await prisma.workspace_documents.deleteMany({
+        where: {
+          id: { in: documentIds },
+          workspaceId: workspace.id
+        },
+      });
+      await prisma.document_vectors.deleteMany({
+        where: { docId: { in: docIds } },
+      });
+    } catch (error) {
+      console.error("Error during batch deletion:", error.message);
     }
 
     await EventLogs.logEvent(

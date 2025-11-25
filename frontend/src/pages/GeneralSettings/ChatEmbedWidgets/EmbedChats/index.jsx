@@ -9,6 +9,7 @@ import { CaretDown, Download } from "@phosphor-icons/react";
 import showToast from "@/utils/toast";
 import { saveAs } from "file-saver";
 import System from "@/models/system";
+import useUser from "@/hooks/useUser";
 
 const exportOptions = {
   csv: {
@@ -50,11 +51,13 @@ export default function EmbedChatsView() {
   const menuRef = useRef();
   const openMenuButton = useRef();
   const { t } = useTranslation();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [chats, setChats] = useState([]);
   const query = useQuery();
   const [offset, setOffset] = useState(Number(query.get("offset") || 0));
   const [canNext, setCanNext] = useState(false);
+  const isReadOnly = user?.role === "default";
 
   const handleDumpChats = async (exportType) => {
     const chats = await System.exportChats(exportType, "embed");
@@ -196,7 +199,7 @@ export default function EmbedChatsView() {
           </thead>
           <tbody>
             {chats.map((chat) => (
-              <ChatRow key={chat.id} chat={chat} onDelete={handleDeleteChat} />
+              <ChatRow key={chat.id} chat={chat} onDelete={handleDeleteChat} isReadOnly={isReadOnly} />
             ))}
           </tbody>
         </table>

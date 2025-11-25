@@ -1,6 +1,7 @@
 const { EmbedChats } = require("../models/embedChats");
 const { EmbedConfig } = require("../models/embedConfig");
 const { EventLogs } = require("../models/eventLogs");
+const { WorkspaceUser } = require("../models/workspaceUsers");
 const { reqBody, userFromSession } = require("../utils/http");
 const { validEmbedConfigId } = require("../utils/middleware/embedMiddleware");
 const {
@@ -17,12 +18,30 @@ function embedManagementEndpoints(app) {
 
   app.get(
     "/embeds",
-    [validatedRequest, flexUserRoleValid([ROLES.admin])],
-    async (_, response) => {
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
+    async (request, response) => {
       try {
-        const embeds = await EmbedConfig.whereWithWorkspace({}, null, {
-          createdAt: "desc",
-        });
+        const user = await userFromSession(request, response);
+        let embeds;
+
+        // Default users only see embeds for their assigned workspaces
+        if (user?.role === ROLES.default) {
+          const userWorkspaces = await WorkspaceUser.where({ user_id: user.id });
+          const workspaceIds = userWorkspaces.map(ws => ws.workspace_id);
+          if (workspaceIds.length === 0) {
+            return response.status(200).json({ embeds: [] });
+          }
+          embeds = await EmbedConfig.whereWithWorkspace(
+            { workspace_id: { in: workspaceIds } },
+            null,
+            { createdAt: "desc" }
+          );
+        } else {
+          embeds = await EmbedConfig.whereWithWorkspace({}, null, {
+            createdAt: "desc",
+          });
+        }
+
         response.status(200).json({ embeds });
       } catch (e) {
         console.error(e);
@@ -92,17 +111,38 @@ function embedManagementEndpoints(app) {
 
   app.post(
     "/embed/chats",
-    [chatHistoryViewable, validatedRequest, flexUserRoleValid([ROLES.admin])],
+    [chatHistoryViewable, validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
     async (request, response) => {
       try {
+        const user = await userFromSession(request, response);
         const { offset = 0, limit = 20 } = reqBody(request);
-        const embedChats = await EmbedChats.whereWithEmbedAndWorkspace(
-          {},
-          limit,
-          { id: "desc" },
-          offset * limit
-        );
-        const totalChats = await EmbedChats.count();
+        let embedChats;
+        let totalChats;
+
+        // Default users only see chats for embeds in their assigned workspaces
+        if (user?.role === ROLES.default) {
+          const userWorkspaces = await WorkspaceUser.where({ user_id: user.id });
+          const workspaceIds = userWorkspaces.map(ws => ws.workspace_id);
+          if (workspaceIds.length === 0) {
+            return response.status(200).json({ chats: [], hasPages: false, totalChats: 0 });
+          }
+          embedChats = await EmbedChats.whereWithEmbedAndWorkspace(
+            { embed_config: { workspace_id: { in: workspaceIds } } },
+            limit,
+            { id: "desc" },
+            offset * limit
+          );
+          totalChats = await EmbedChats.count({ embed_config: { workspace_id: { in: workspaceIds } } });
+        } else {
+          embedChats = await EmbedChats.whereWithEmbedAndWorkspace(
+            {},
+            limit,
+            { id: "desc" },
+            offset * limit
+          );
+          totalChats = await EmbedChats.count();
+        }
+
         const hasPages = totalChats > (offset + 1) * limit;
         response.status(200).json({ chats: embedChats, hasPages, totalChats });
       } catch (e) {

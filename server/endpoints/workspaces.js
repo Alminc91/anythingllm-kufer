@@ -45,7 +45,7 @@ function workspaceEndpoints(app) {
 
   app.post(
     "/workspace/new",
-    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager])],
+    [validatedRequest, flexUserRoleValid([ROLES.admin])],
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
@@ -89,7 +89,13 @@ function workspaceEndpoints(app) {
       try {
         const user = await userFromSession(request, response);
         const { slug = null } = request.params;
-        const data = reqBody(request);
+        let data = reqBody(request);
+
+        // Only admin can modify messagesLimit (billing protection)
+        if (user?.role !== ROLES.admin && data.hasOwnProperty('messagesLimit')) {
+          delete data.messagesLimit;
+        }
+
         const currWorkspace = multiUserMode(response)
           ? await Workspace.getWithUser(user, { slug })
           : await Workspace.get({ slug });

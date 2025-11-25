@@ -9,12 +9,15 @@ import { useModal } from "@/hooks/useModal";
 import ModalWrapper from "@/components/ModalWrapper";
 import Embed from "@/models/embed";
 import CTAButton from "@/components/lib/CTAButton";
+import useUser from "@/hooks/useUser";
 
 export default function EmbedConfigsView() {
   const { isOpen, openModal, closeModal } = useModal();
   const { t } = useTranslation();
+  const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [embeds, setEmbeds] = useState([]);
+  const isReadOnly = user?.role === "default";
 
   useEffect(() => {
     async function fetchUsers() {
@@ -53,12 +56,14 @@ export default function EmbedConfigsView() {
             {t("embeddable.description")}
           </p>
 
-          <div>
-            <CTAButton onClick={openModal} className="text-theme-bg-chat">
-              <CodeBlock className="h-4 w-4" weight="bold" />{" "}
-              {t("embeddable.create")}
-            </CTAButton>
-          </div>
+          {!isReadOnly && (
+            <div>
+              <CTAButton onClick={openModal} className="text-theme-bg-chat">
+                <CodeBlock className="h-4 w-4" weight="bold" />{" "}
+                {t("embeddable.create")}
+              </CTAButton>
+            </div>
+          )}
         </div>
       </div>
       <div className="overflow-x-auto">
@@ -84,7 +89,7 @@ export default function EmbedConfigsView() {
           </thead>
           <tbody>
             {embeds.map((embed) => (
-              <EmbedRow key={embed.id} embed={embed} />
+              <EmbedRow key={embed.id} embed={embed} isReadOnly={isReadOnly} />
             ))}
           </tbody>
         </table>

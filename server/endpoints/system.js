@@ -1,7 +1,7 @@
 process.env.NODE_ENV === "development"
   ? require("dotenv").config({ path: `.env.${process.env.NODE_ENV}` })
   : require("dotenv").config();
-const { viewLocalFiles, normalizePath, isWithin } = require("../utils/files");
+const { viewLocalFiles, normalizePath, isWithin, purgeVectorCache, purgeSourceDocument } = require("../utils/files");
 const { purgeDocument, purgeFolder } = require("../utils/files/purgeDocument");
 const { getVectorDbClass } = require("../utils/helpers");
 const { updateENV, dumpENV } = require("../utils/helpers/updateENV");
@@ -34,6 +34,8 @@ const { WelcomeMessages } = require("../models/welcomeMessages");
 const { ApiKey } = require("../models/apiKeys");
 const { getCustomModels } = require("../utils/helpers/customModels");
 const { WorkspaceChats } = require("../models/workspaceChats");
+const { Workspace } = require("../models/workspace");
+const { Document } = require("../models/documents");
 const {
   flexUserRoleValid,
   ROLES,
@@ -398,7 +400,19 @@ function systemEndpoints(app) {
     async (request, response) => {
       try {
         const { names } = reqBody(request);
-        for await (const name of names) await purgeDocument(name);
+
+        // Step 1: Purge file system cache and source files (must be done per-file)
+        for await (const name of names) {
+          await purgeVectorCache(name);
+          await purgeSourceDocument(name);
+        }
+
+        // Step 2: Batch database operations (much faster)
+        const workspaces = await Workspace.where();
+        for (const workspace of workspaces) {
+          await Document.removeDocuments(workspace, names);
+        }
+
         response.sendStatus(200).end();
       } catch (e) {
         console.error(e.message, e);
@@ -1030,7 +1044,7 @@ function systemEndpoints(app) {
     [
       chatHistoryViewable,
       validatedRequest,
-      flexUserRoleValid([ROLES.admin, ROLES.manager]),
+      flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default]),
     ],
     async (request, response) => {
       try {
@@ -1074,7 +1088,7 @@ function systemEndpoints(app) {
     [
       chatHistoryViewable,
       validatedRequest,
-      flexUserRoleValid([ROLES.manager, ROLES.admin]),
+      flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default]),
     ],
     async (request, response) => {
       try {

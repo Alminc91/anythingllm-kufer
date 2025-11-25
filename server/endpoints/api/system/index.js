@@ -1,6 +1,9 @@
 const { EventLogs } = require("../../../models/eventLogs");
 const { SystemSettings } = require("../../../models/systemSettings");
 const { purgeDocument } = require("../../../utils/files/purgeDocument");
+const { purgeVectorCache, purgeSourceDocument } = require("../../../utils/files");
+const { Workspace } = require("../../../models/workspace");
+const { Document } = require("../../../models/documents");
 const { getVectorDbClass } = require("../../../utils/helpers");
 const { exportChatsAsType } = require("../../../utils/helpers/chat/convertTo");
 const { dumpENV, updateENV } = require("../../../utils/helpers/updateENV");
@@ -259,7 +262,19 @@ function apiSystemEndpoints(app) {
       */
       try {
         const { names } = reqBody(request);
-        for await (const name of names) await purgeDocument(name);
+
+        // Step 1: Purge file system cache and source files (must be done per-file)
+        for await (const name of names) {
+          await purgeVectorCache(name);
+          await purgeSourceDocument(name);
+        }
+
+        // Step 2: Batch database operations (much faster)
+        const workspaces = await Workspace.where();
+        for (const workspace of workspaces) {
+          await Document.removeDocuments(workspace, names);
+        }
+
         response
           .status(200)
           .json({ success: true, message: "Documents removed successfully" })

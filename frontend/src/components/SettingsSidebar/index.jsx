@@ -278,7 +278,7 @@ const SidebarOptions = ({ user = null, t }) => (
               btnText: t("settings.workspace-chats"),
               href: paths.settings.chats(),
               flex: true,
-              roles: ["admin", "manager"],
+              roles: ["admin", "manager", "default"],
             },
             {
               btnText: t("settings.invites"),
@@ -354,7 +354,7 @@ const SidebarOptions = ({ user = null, t }) => (
               btnText: t("settings.embeds"),
               href: paths.settings.embedChatWidgets(),
               flex: true,
-              roles: ["admin"],
+              roles: ["admin", "manager", "default"],
             },
             {
               btnText: t("settings.event-logs"),

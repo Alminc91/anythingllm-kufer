@@ -5,7 +5,7 @@ import { useModal } from "@/hooks/useModal";
 import paths from "@/utils/paths";
 import Embed from "@/models/embed";
 
-export default function ChatRow({ chat, onDelete }) {
+export default function ChatRow({ chat, onDelete, isReadOnly = false }) {
   const {
     isOpen: isPromptOpen,
     openModal: openPromptModal,
@@ -68,14 +68,16 @@ export default function ChatRow({ chat, onDelete }) {
         </td>
         <td className="px-6">{chat.createdAt}</td>
         <td className="px-6 flex items-center gap-x-6 h-full mt-1">
-          <button
-            onClick={handleDelete}
-            className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-delete-hover-bg"
-          >
-            <span className="group-hover:text-theme-button-delete-hover-text">
-              Delete
-            </span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleDelete}
+              className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-delete-hover-bg"
+            >
+              <span className="group-hover:text-theme-button-delete-hover-text">
+                Delete
+              </span>
+            </button>
+          )}
         </td>
       </tr>
       <ModalWrapper isOpen={isPromptOpen}>

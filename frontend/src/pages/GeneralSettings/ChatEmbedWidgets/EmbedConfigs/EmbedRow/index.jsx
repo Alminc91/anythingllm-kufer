@@ -10,7 +10,7 @@ import EditEmbedModal from "./EditEmbedModal";
 import CodeSnippetModal from "./CodeSnippetModal";
 import moment from "moment";
 
-export default function EmbedRow({ embed }) {
+export default function EmbedRow({ embed, isReadOnly = false }) {
   const rowRef = useRef(null);
   const [enabled, setEnabled] = useState(Number(embed.enabled) === 1);
   const {
@@ -97,36 +97,40 @@ export default function EmbedRow({ embed }) {
           }
         </th>
         <td className="px-6 flex items-center gap-x-6 h-full mt-1">
-          <button
-            onClick={openSnippetModal}
-            className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-code-hover-bg"
-          >
-            <span className="group-hover:text-theme-button-code-hover-text">
-              Code
-            </span>
-          </button>
-          <button
-            onClick={handleSuspend}
-            className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-disable-hover-bg"
-          >
-            <span className="group-hover:text-theme-button-disable-hover-text">
-              {enabled ? "Disable" : "Enable"}
-            </span>
-          </button>
-          <button
-            onClick={handleDelete}
-            className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-delete-hover-bg"
-          >
-            <span className="group-hover:text-theme-button-delete-hover-text">
-              Delete
-            </span>
-          </button>
-          <button
-            onClick={openSettingsModal}
-            className="text-xs font-medium text-theme-button-text hover:text-theme-text-secondary hover:bg-theme-hover px-2 py-1 rounded-lg"
-          >
-            <DotsThreeOutline weight="fill" className="h-5 w-5" />
-          </button>
+          {!isReadOnly && (
+            <>
+              <button
+                onClick={openSnippetModal}
+                className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-code-hover-bg"
+              >
+                <span className="group-hover:text-theme-button-code-hover-text">
+                  Code
+                </span>
+              </button>
+              <button
+                onClick={handleSuspend}
+                className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-disable-hover-bg"
+              >
+                <span className="group-hover:text-theme-button-disable-hover-text">
+                  {enabled ? "Disable" : "Enable"}
+                </span>
+              </button>
+              <button
+                onClick={handleDelete}
+                className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-delete-hover-bg"
+              >
+                <span className="group-hover:text-theme-button-delete-hover-text">
+                  Delete
+                </span>
+              </button>
+              <button
+                onClick={openSettingsModal}
+                className="text-xs font-medium text-theme-button-text hover:text-theme-text-secondary hover:bg-theme-hover px-2 py-1 rounded-lg"
+              >
+                <DotsThreeOutline weight="fill" className="h-5 w-5" />
+              </button>
+            </>
+          )}
         </td>
       </tr>
       <ModalWrapper isOpen={isSettingsOpen}>

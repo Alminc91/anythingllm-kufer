@@ -11,6 +11,7 @@ import { CaretDown, Download, Trash } from "@phosphor-icons/react";
 import { saveAs } from "file-saver";
 import { useTranslation } from "react-i18next";
 import { CanViewChatHistory } from "@/components/CanViewChatHistory";
+import useUser from "@/hooks/useUser";
 
 const exportOptions = {
   csv: {
@@ -57,6 +58,8 @@ export default function WorkspaceChats() {
   const [offset, setOffset] = useState(Number(query.get("offset") || 0));
   const [canNext, setCanNext] = useState(false);
   const { t } = useTranslation();
+  const { user } = useUser();
+  const isReadOnly = user?.role === "default";
 
   const handleDumpChats = async (exportType) => {
     const chats = await System.exportChats(exportType, "workspace");
@@ -161,7 +164,7 @@ export default function WorkspaceChats() {
                     </div>
                   </div>
                 </div>
-                {chats.length > 0 && (
+                {chats.length > 0 && !isReadOnly && (
                   <button
                     onClick={handleClearAllChats}
                     className="flex items-center gap-x-2 px-4 py-1 border hover:border-transparent light:border-theme-sidebar-border border-white/40 text-white/40 light:text-theme-text-secondary rounded-lg bg-transparent hover:light:text-theme-bg-primary hover:text-theme-text-primary text-xs font-semibold hover:bg-red-500 shadow-[0_4px_14px_rgba(0,0,0,0.25)] h-[34px] w-fit"
@@ -184,6 +187,7 @@ export default function WorkspaceChats() {
                 setOffset={setOffset}
                 canNext={canNext}
                 t={t}
+                isReadOnly={isReadOnly}
               />
             </div>
           </div>
@@ -201,6 +205,7 @@ function ChatsContainer({
   setOffset,
   canNext,
   t,
+  isReadOnly,
 }) {
   const handlePrevious = () => {
     setOffset(Math.max(offset - 1, 0));
@@ -259,7 +264,7 @@ function ChatsContainer({
         <tbody>
           {!!chats &&
             chats.map((chat) => (
-              <ChatRow key={chat.id} chat={chat} onDelete={handleDeleteChat} />
+              <ChatRow key={chat.id} chat={chat} onDelete={handleDeleteChat} isReadOnly={isReadOnly} />
             ))}
         </tbody>
       </table>
