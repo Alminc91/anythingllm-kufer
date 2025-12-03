@@ -7,14 +7,14 @@ cd /home/srvadmin/KI_Apps_Pipelines/Apps/anythingllm-embed
 npm run build:publish
 
 # This copies the minified files to:
-# - ../anything-llm/frontend/public/embed/anythingllm-chat-widget.min.js
-# - ../anything-llm/frontend/public/embed/anythingllm-chat-widget.min.css
+# - ../anythingllm/frontend/public/embed/anythingllm-chat-widget.min.js
+# - ../anythingllm/frontend/public/embed/anythingllm-chat-widget.min.css
 ```
 
 ## Build Image (Correct Command)
 ```bash
 # Run from the main project directory, not docker/
-cd /home/srvadmin/KI_Apps_Pipelines/Apps/anything-llm
+cd /home/srvadmin/KI_Apps_Pipelines/Apps/anythingllm
 
 # Build with multiple tags (no separate tagging needed)
 docker build -f docker/Dockerfile -t kufer/anythingllm-kufer:VERSION -t kufer/anythingllm-kufer:latest .
@@ -33,7 +33,7 @@ docker push kufer/anythingllm-kufer:latest
 ## Example for Version 1.10
 ```bash
 # Build with tags
-cd /home/srvadmin/KI_Apps_Pipelines/Apps/anything-llm
+cd /home/srvadmin/KI_Apps_Pipelines/Apps/anythingllm
 docker build -f docker/Dockerfile -t kufer/anythingllm-kufer:1.10 -t kufer/anythingllm-kufer:latest .
 
 # Push specific tags
