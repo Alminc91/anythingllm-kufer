@@ -1,0 +1,104 @@
+const FormData = require("form-data");
+
+class GenericOpenAiSTT {
+  constructor() {
+    if (!process.env.STT_OPEN_AI_COMPATIBLE_ENDPOINT)
+      throw new Error(
+        "No OpenAI compatible STT endpoint was set. Please set STT_OPEN_AI_COMPATIBLE_ENDPOINT to use this provider."
+      );
+
+    this.endpoint = process.env.STT_OPEN_AI_COMPATIBLE_ENDPOINT;
+    this.apiKey = process.env.STT_OPEN_AI_COMPATIBLE_KEY || null;
+    this.model = process.env.STT_OPEN_AI_COMPATIBLE_MODEL || "whisper-1";
+    this.language = process.env.STT_OPEN_AI_COMPATIBLE_LANGUAGE || null;
+
+    this.#log(
+      `Initialized with endpoint: ${this.endpoint}, model: ${this.model}`
+    );
+  }
+
+  #log(text, ...args) {
+    console.log(`\x1b[32m[OpenAiGenericSTT]\x1b[0m ${text}`, ...args);
+  }
+
+  /**
+   * Transcribes audio buffer to text using OpenAI-compatible API
+   * @param {Buffer} audioBuffer - The audio data to transcribe
+   * @param {Object} options - Optional parameters
+   * @param {string} options.language - Language code (e.g., 'de', 'en')
+   * @param {string} options.filename - Original filename with extension
+   * @returns {Promise<{text: string}>} The transcription result
+   */
+  async transcribe(audioBuffer, options = {}) {
+    try {
+      const formData = new FormData();
+
+      // Determine content type from filename or default to webm
+      const filename = options.filename || "audio.webm";
+      const contentType = this.#getContentType(filename);
+
+      formData.append("file", audioBuffer, {
+        filename: filename,
+        contentType: contentType,
+      });
+      formData.append("model", this.model);
+
+      // Add language if specified (in options or env)
+      const language = options.language || this.language;
+      if (language) {
+        formData.append("language", language);
+      }
+
+      const headers = {
+        ...formData.getHeaders(),
+      };
+
+      if (this.apiKey) {
+        headers["Authorization"] = `Bearer ${this.apiKey}`;
+      }
+
+      const response = await fetch(this.endpoint, {
+        method: "POST",
+        headers: headers,
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(
+          `STT request failed (${response.status}): ${errorText}`
+        );
+      }
+
+      const result = await response.json();
+      this.#log(`Transcription completed: "${result.text?.substring(0, 50)}..."`);
+
+      return { text: result.text || "" };
+    } catch (error) {
+      this.#log(`Error during transcription: ${error.message}`);
+      throw error;
+    }
+  }
+
+  #getContentType(filename) {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    const mimeTypes = {
+      webm: "audio/webm",
+      mp3: "audio/mpeg",
+      mp4: "audio/mp4",
+      m4a: "audio/mp4",
+      wav: "audio/wav",
+      ogg: "audio/ogg",
+      flac: "audio/flac",
+    };
+    return mimeTypes[ext] || "audio/webm";
+  }
+
+  static isConfigured() {
+    return !!process.env.STT_OPEN_AI_COMPATIBLE_ENDPOINT;
+  }
+}
+
+module.exports = {
+  GenericOpenAiSTT,
+};

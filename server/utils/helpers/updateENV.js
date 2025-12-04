@@ -653,6 +653,30 @@ const KEY_MAPPING = {
     checks: [isValidURL],
   },
 
+  // STT Provider Selection
+  SpeechToTextProvider: {
+    envKey: "STT_PROVIDER",
+    checks: [supportedSTTProvider],
+  },
+
+  // OpenAI Generic STT (Whisper compatible)
+  STTOpenAICompatibleKey: {
+    envKey: "STT_OPEN_AI_COMPATIBLE_KEY",
+    checks: [],
+  },
+  STTOpenAICompatibleModel: {
+    envKey: "STT_OPEN_AI_COMPATIBLE_MODEL",
+    checks: [],
+  },
+  STTOpenAICompatibleEndpoint: {
+    envKey: "STT_OPEN_AI_COMPATIBLE_ENDPOINT",
+    checks: [isValidURL],
+  },
+  STTOpenAICompatibleLanguage: {
+    envKey: "STT_OPEN_AI_COMPATIBLE_LANGUAGE",
+    checks: [],
+  },
+
   // DeepSeek Options
   DeepSeekApiKey: {
     envKey: "DEEPSEEK_API_KEY",
@@ -838,6 +862,11 @@ function supportedTTSProvider(input = "") {
     "generic-openai",
   ].includes(input);
   return validSelection ? null : `${input} is not a valid TTS provider.`;
+}
+
+function supportedSTTProvider(input = "") {
+  const validSelection = ["native", "generic-openai"].includes(input);
+  return validSelection ? null : `${input} is not a valid STT provider.`;
 }
 
 function validLocalWhisper(input = "") {

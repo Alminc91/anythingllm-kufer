@@ -1,0 +1,352 @@
+/**
+ * TTS Text Normalizer - Multilingual
+ *
+ * Uses:
+ * - franc-min: Language detection (82+ languages)
+ * - n2words: Numbers to words (28 languages)
+ * - Intl.DateTimeFormat: Date/weekday formatting (all languages)
+ *
+ * Manual per-language: Only 3 words needed (hour, times, currency)
+ */
+
+// ============================================
+// ISO 639-3 to ISO 639-1 mapping (franc returns 3-letter codes)
+// ============================================
+const ISO_639_3_TO_1 = {
+  'deu': 'de', 'eng': 'en', 'fra': 'fr', 'spa': 'es', 'tur': 'tr',
+  'ara': 'ar', 'ukr': 'uk', 'rus': 'ru', 'pol': 'pl', 'zho': 'zh',
+  'cmn': 'zh', 'ita': 'it', 'por': 'pt', 'nld': 'nl', 'jpn': 'ja',
+  'kor': 'ko', 'vie': 'vi', 'tha': 'th', 'hin': 'hi', 'ben': 'bn',
+  'srp': 'sr', 'hrv': 'hr', 'bos': 'bs', 'ces': 'cs', 'slk': 'sk',
+  'hun': 'hu', 'ron': 'ro', 'bul': 'bg', 'ell': 'el', 'heb': 'he',
+  'fas': 'fa', 'urd': 'ur', 'swe': 'sv', 'nor': 'no', 'dan': 'da',
+  'fin': 'fi', 'est': 'et', 'lav': 'lv', 'lit': 'lt', 'ind': 'id',
+};
+
+// ============================================
+// Language-specific words (only 3-4 words per language!)
+// ============================================
+const LANGUAGE_WORDS = {
+  // Format: { hour: "Uhr", times: "mal", currency: "Euro", locale: "de-DE" }
+  de: { hour: 'Uhr', times: 'mal', currency: 'Euro', locale: 'de-DE', n2w: 'de' },
+  en: { hour: "o'clock", times: 'times', currency: 'dollars', locale: 'en-US', n2w: 'en' },
+  fr: { hour: 'heures', times: 'fois', currency: 'euros', locale: 'fr-FR', n2w: 'fr' },
+  es: { hour: 'horas', times: 'veces', currency: 'euros', locale: 'es-ES', n2w: 'es' },
+  it: { hour: 'ore', times: 'volte', currency: 'euro', locale: 'it-IT', n2w: 'it' },
+  pt: { hour: 'horas', times: 'vezes', currency: 'euros', locale: 'pt-PT', n2w: 'pt' },
+  nl: { hour: 'uur', times: 'keer', currency: 'euro', locale: 'nl-NL', n2w: 'nl' },
+  pl: { hour: '', times: 'razy', currency: 'euro', locale: 'pl-PL', n2w: 'pl' },
+  ru: { hour: 'часов', times: 'раз', currency: 'евро', locale: 'ru-RU', n2w: 'ru' },
+  uk: { hour: 'годині', times: 'разів', currency: 'євро', locale: 'uk-UA', n2w: 'uk' },
+  tr: { hour: '', times: 'kez', currency: 'euro', locale: 'tr-TR', n2w: 'tr' },
+  ar: { hour: '', times: 'مرات', currency: 'يورو', locale: 'ar-SA', n2w: 'ar' },
+  zh: { hour: '点', times: '次', currency: '欧元', locale: 'zh-CN', n2w: 'zh' },
+  ja: { hour: '時', times: '回', currency: 'ユーロ', locale: 'ja-JP', n2w: 'ja' },
+  ko: { hour: '시', times: '번', currency: '유로', locale: 'ko-KR', n2w: 'ko' },
+  vi: { hour: 'giờ', times: 'lần', currency: 'euro', locale: 'vi-VN', n2w: 'vi' },
+  hr: { hour: 'sati', times: 'puta', currency: 'eura', locale: 'hr-HR', n2w: 'hr' },
+  sr: { hour: 'сати', times: 'пута', currency: 'евра', locale: 'sr-RS', n2w: 'sr' },
+  cs: { hour: 'hodin', times: 'krát', currency: 'eur', locale: 'cs-CZ', n2w: 'cz' },
+  hu: { hour: 'óra', times: 'alkalommal', currency: 'euró', locale: 'hu-HU', n2w: 'hu' },
+  ro: { hour: 'ore', times: 'ori', currency: 'euro', locale: 'ro-RO', n2w: 'ro' },
+  da: { hour: '', times: 'gange', currency: 'euro', locale: 'da-DK', n2w: 'dk' },
+  no: { hour: '', times: 'ganger', currency: 'euro', locale: 'nb-NO', n2w: 'no' },
+  sv: { hour: '', times: 'gånger', currency: 'euro', locale: 'sv-SE', n2w: 'sv' },
+  fi: { hour: '', times: 'kertaa', currency: 'euroa', locale: 'fi-FI', n2w: 'fi' },
+  he: { hour: '', times: 'פעמים', currency: 'אירו', locale: 'he-IL', n2w: 'he' },
+  id: { hour: 'jam', times: 'kali', currency: 'euro', locale: 'id-ID', n2w: 'id' },
+  lt: { hour: 'valandą', times: 'kartų', currency: 'eurų', locale: 'lt-LT', n2w: 'lt' },
+  lv: { hour: '', times: 'reizes', currency: 'eiro', locale: 'lv-LV', n2w: 'lv' },
+  fa: { hour: 'ساعت', times: 'بار', currency: 'یورو', locale: 'fa-IR', n2w: 'fa' },
+  az: { hour: 'saat', times: 'dəfə', currency: 'avro', locale: 'az-AZ', n2w: 'az' },
+};
+
+// Default fallback
+const DEFAULT_LANG = 'de';
+
+// ============================================
+// Language Detection (using franc-min)
+// ============================================
+function detectLanguage(text, fallback = DEFAULT_LANG) {
+  if (!text || text.length < 10) return fallback;
+
+  try {
+    const { franc } = require('franc-min');
+    const detected = franc(text);
+
+    if (detected === 'und') return fallback;
+
+    const iso1 = ISO_639_3_TO_1[detected];
+    return (iso1 && LANGUAGE_WORDS[iso1]) ? iso1 : fallback;
+  } catch (error) {
+    console.warn('[TTS Normalizer] franc-min not available:', error.message);
+    return fallback;
+  }
+}
+
+// ============================================
+// Number to Words (using n2words)
+// ============================================
+function numberToWords(num, lang = DEFAULT_LANG) {
+  try {
+    const n2words = require('n2words');
+    const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+    return n2words(num, { lang: langData.n2w || 'en' });
+  } catch (error) {
+    // Fallback: return number as string
+    return String(num);
+  }
+}
+
+// ============================================
+// Date Formatting (using Intl.DateTimeFormat)
+// ============================================
+function formatDate(dateStr, lang = DEFAULT_LANG) {
+  try {
+    const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+    const locale = langData.locale || 'de-DE';
+
+    // Parse DD.MM.YYYY or DD/MM/YYYY
+    const match = dateStr.match(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/);
+    if (!match) return dateStr;
+
+    const [, day, month, year] = match;
+    const date = new Date(year, month - 1, day);
+
+    if (isNaN(date.getTime())) return dateStr;
+
+    return new Intl.DateTimeFormat(locale, {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }).format(date);
+  } catch (error) {
+    return dateStr;
+  }
+}
+
+// ============================================
+// Time Formatting
+// ============================================
+function formatTime(hour, minute, lang = DEFAULT_LANG) {
+  const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+  const hourWord = numberToWords(parseInt(hour), lang);
+
+  if (parseInt(minute) === 0) {
+    // "10 Uhr" or "10 o'clock"
+    return langData.hour ? `${hourWord} ${langData.hour}` : hourWord;
+  } else {
+    const minWord = numberToWords(parseInt(minute), lang);
+    // "10 Uhr 30" or "10:30"
+    return langData.hour ? `${hourWord} ${langData.hour} ${minWord}` : `${hourWord}:${minWord}`;
+  }
+}
+
+// ============================================
+// Main Normalization Function
+// ============================================
+function normalizeTextForTTS(text, language = 'auto') {
+  if (!text || typeof text !== 'string') return '';
+
+  // Detect language if auto
+  const lang = (language === 'auto') ? detectLanguage(text, DEFAULT_LANG) : language;
+  const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+
+  let normalized = text;
+
+  // 1. Remove markdown formatting (universal)
+  normalized = removeMarkdown(normalized);
+
+  // 2. Remove URLs (universal)
+  normalized = removeUrls(normalized);
+
+  // 3. Remove disclaimers (universal)
+  normalized = removeDisclaimers(normalized);
+
+  // 4. Spell out course numbers for accessibility (universal)
+  normalized = normalizeCourseNumbers(normalized);
+
+  // 5. Normalize dates (multilingual via Intl)
+  normalized = normalizeDates(normalized, lang);
+
+  // 6. Normalize times (multilingual via n2words)
+  normalized = normalizeTimes(normalized, lang);
+
+  // 7. Normalize prices (multilingual)
+  normalized = normalizePrices(normalized, lang);
+
+  // 8. Normalize repetitions "15x" → "15 mal" (multilingual)
+  normalized = normalizeRepetitions(normalized, lang);
+
+  // 9. Clean up separators (universal)
+  normalized = cleanupSeparators(normalized);
+
+  // 10. Clean up whitespace
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+
+  // 11. Limit length
+  normalized = limitLength(normalized, 1500);
+
+  return normalized;
+}
+
+// ============================================
+// Universal Functions (work for all languages)
+// ============================================
+
+function removeMarkdown(text) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, '$1')      // **bold**
+    .replace(/__([^_]+)__/g, '$1')          // __bold__
+    .replace(/\*([^*]+)\*/g, '$1')          // *italic*
+    .replace(/_([^_]+)_/g, '$1')            // _italic_
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url)
+    .replace(/`([^`]+)`/g, '$1')            // `code`
+    .replace(/^#{1,6}\s*/gm, '')            // # headers
+    .replace(/^[-*_]{3,}$/gm, '')           // horizontal rules
+    .replace(/^>\s*/gm, '');                // > blockquotes
+}
+
+function removeUrls(text) {
+  return text
+    .replace(/https?:\/\/[^\s]+/g, '')
+    .replace(/Kurslink:\s*Hier klicken/gi, '')
+    .replace(/Kurslink:\s*$/gim, '')
+    .replace(/Link:\s*$/gim, '');
+}
+
+function removeDisclaimers(text) {
+  return text
+    .replace(/\*?Ich kann Fehler machen\.[^*]*Entwicklungsphase\.\*?/gi, '')
+    .replace(/Ich kann Fehler machen\.[^.]*\./gi, '')
+    .replace(/Bitte überprüfe[^.]*\./gi, '');
+}
+
+function normalizeCourseNumbers(text) {
+  // "Kurs: R2250" → "Kurs R 2 2 5 0" (spelled out for accessibility)
+  // "Kursnummer: 2026F96710" → "Kursnummer 2 0 2 6 F 9 6 7 1 0"
+
+  const spellOut = (code) => {
+    // Add space between each character for TTS to spell it out
+    return code.split('').join(' ');
+  };
+
+  text = text.replace(/\*?\*?Kurs:?\*?\*?\s*([A-Z0-9]+)/gi, (match, code) => {
+    return `Kurs ${spellOut(code)}`;
+  });
+
+  text = text.replace(/Kursnummer:\s*([A-Z0-9]+)/gi, (match, code) => {
+    return `Kursnummer ${spellOut(code)}`;
+  });
+
+  return text;
+}
+
+function cleanupSeparators(text) {
+  return text
+    .replace(/\s*\|\s*/g, ', ')
+    .replace(/,\s*,/g, ',')
+    .replace(/^\s*,\s*/gm, '')
+    .replace(/\s*,\s*$/gm, '');
+}
+
+function limitLength(text, maxLength = 1500) {
+  if (text.length <= maxLength) return text;
+
+  const truncated = text.substring(0, maxLength);
+  const lastSentenceEnd = Math.max(
+    truncated.lastIndexOf('.'),
+    truncated.lastIndexOf('!'),
+    truncated.lastIndexOf('?')
+  );
+
+  if (lastSentenceEnd > maxLength * 0.7) {
+    return truncated.substring(0, lastSentenceEnd + 1);
+  }
+
+  const lastSpace = truncated.lastIndexOf(' ');
+  if (lastSpace > maxLength * 0.8) {
+    return truncated.substring(0, lastSpace) + '...';
+  }
+
+  return truncated + '...';
+}
+
+// ============================================
+// Multilingual Functions (use packages)
+// ============================================
+
+function normalizeDates(text, lang = DEFAULT_LANG) {
+  // Match DD.MM.YYYY or DD/MM/YYYY
+  return text.replace(/(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})/g, (match) => {
+    return formatDate(match, lang);
+  });
+}
+
+function normalizeTimes(text, lang = DEFAULT_LANG) {
+  // Match time ranges: "10:00 - 12:30 Uhr" or "18.30 - 20.30 Uhr"
+  text = text.replace(/(\d{1,2})[.:](\d{2})\s*[-–]\s*(\d{1,2})[.:](\d{2})\s*Uhr?/gi,
+    (match, h1, m1, h2, m2) => {
+      const time1 = formatTime(h1, m1, lang);
+      const time2 = formatTime(h2, m2, lang);
+      const connector = lang === 'de' ? 'bis' : lang === 'fr' ? 'à' : lang === 'es' ? 'a' : 'to';
+      return `${time1} ${connector} ${time2}`;
+    });
+
+  // Match single times: "10:00 Uhr"
+  text = text.replace(/(\d{1,2})[.:](\d{2})\s*Uhr/gi, (match, h, m) => {
+    return formatTime(h, m, lang);
+  });
+
+  return text;
+}
+
+function normalizePrices(text, lang = DEFAULT_LANG) {
+  const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+  const currencyWord = langData.currency || 'Euro';
+
+  // "17,50 €" or "17.50€"
+  text = text.replace(/(\d+)[,.](\d{2})\s*€/g, (match, euros, cents) => {
+    const euroWord = numberToWords(parseInt(euros), lang);
+    if (cents === '00') {
+      return `${euroWord} ${currencyWord}`;
+    }
+    const centWord = numberToWords(parseInt(cents), lang);
+    return `${euroWord} ${currencyWord} ${centWord}`;
+  });
+
+  // Whole amounts: "100 €"
+  text = text.replace(/(\d+)\s*€/g, (match, euros) => {
+    const euroWord = numberToWords(parseInt(euros), lang);
+    return `${euroWord} ${currencyWord}`;
+  });
+
+  // "Preis: Nicht angegeben"
+  text = text.replace(/Preis:\s*Nicht angegeben/gi, '');
+
+  return text;
+}
+
+function normalizeRepetitions(text, lang = DEFAULT_LANG) {
+  const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+  const timesWord = langData.times || 'times';
+
+  // "| 15x" → ", 15 mal"
+  return text.replace(/\|?\s*(\d+)x\b/g, (match, count) => {
+    const numWord = numberToWords(parseInt(count), lang);
+    return `, ${numWord} ${timesWord}`;
+  });
+}
+
+// ============================================
+// Exports
+// ============================================
+module.exports = {
+  normalizeTextForTTS,
+  detectLanguage,
+  numberToWords,
+  formatDate,
+  formatTime,
+  LANGUAGE_WORDS,
+  ISO_639_3_TO_1,
+};
