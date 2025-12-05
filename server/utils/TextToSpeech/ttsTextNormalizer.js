@@ -65,15 +65,141 @@ const LANGUAGE_WORDS = {
 const DEFAULT_LANG = 'de';
 
 // ============================================
+// Abbreviations - Auto-generated via Intl + manual extras
+// ============================================
+
+// Cache for generated abbreviation maps
+const abbreviationCache = {};
+
+/**
+ * Generate weekday abbreviation map using Intl (works for all locales)
+ * Returns: {"Mo": "Montag", "Mo.": "Montag", ...}
+ */
+function generateWeekdayMap(locale) {
+  const map = {};
+  // Jan 1, 2024 = Monday, so we iterate Mon-Sun
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(2024, 0, i + 1);
+    const short = new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+    const long = new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(date);
+    // Add both with and without period
+    map[short] = long;
+    map[short + '.'] = long;
+    // Also lowercase variants
+    map[short.toLowerCase()] = long;
+    map[short.toLowerCase() + '.'] = long;
+  }
+  return map;
+}
+
+/**
+ * Generate month abbreviation map using Intl (works for all locales)
+ * Returns: {"Jan": "Januar", "Jan.": "Januar", ...}
+ */
+function generateMonthMap(locale) {
+  const map = {};
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(2024, i, 15);
+    const short = new Intl.DateTimeFormat(locale, { month: 'short' }).format(date);
+    const long = new Intl.DateTimeFormat(locale, { month: 'long' }).format(date);
+    // Add both with and without period
+    map[short] = long;
+    map[short + '.'] = long;
+    // Also lowercase variants
+    map[short.toLowerCase()] = long;
+    map[short.toLowerCase() + '.'] = long;
+  }
+  return map;
+}
+
+/**
+ * Get or create abbreviation map for a locale
+ */
+function getAbbreviationMap(lang) {
+  const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
+  const locale = langData.locale || 'de-DE';
+
+  if (!abbreviationCache[locale]) {
+    // Generate auto abbreviations from Intl
+    const weekdays = generateWeekdayMap(locale);
+    const months = generateMonthMap(locale);
+
+    // Merge with manual extras for this language
+    const manualExtras = MANUAL_ABBREVIATIONS[lang] || {};
+
+    abbreviationCache[locale] = { ...weekdays, ...months, ...manualExtras };
+  }
+
+  return abbreviationCache[locale];
+}
+
+// Manual abbreviations that Intl doesn't cover (street names, common phrases, etc.)
+const MANUAL_ABBREVIATIONS = {
+  de: {
+    'Str.': 'Straße', 'str.': 'straße', 'Nr.': 'Nummer', 'nr.': 'nummer',
+    'ca.': 'circa', 'z.B.': 'zum Beispiel', 'z. B.': 'zum Beispiel',
+    'd.h.': 'das heißt', 'd. h.': 'das heißt', 'u.a.': 'unter anderem',
+    'bzw.': 'beziehungsweise', 'inkl.': 'inklusive', 'exkl.': 'exklusive',
+    'zzgl.': 'zuzüglich', 'evtl.': 'eventuell', 'Tel.': 'Telefon',
+    'max.': 'maximal', 'min.': 'minimal', 'Min.': 'Minuten',
+    'Std.': 'Stunden', 'Teiln.': 'Teilnehmer', 'UE': 'Unterrichtseinheiten',
+  },
+  en: {
+    'St.': 'Street', 'Ave.': 'Avenue', 'Blvd.': 'Boulevard', 'Dr.': 'Drive',
+    'No.': 'Number', 'approx.': 'approximately', 'e.g.': 'for example',
+    'i.e.': 'that is', 'etc.': 'etcetera', 'incl.': 'including',
+  },
+  fr: {
+    'n°': 'numéro', 'env.': 'environ', 'p.ex.': 'par exemple',
+  },
+  tr: {
+    'Cad.': 'Caddesi', 'Sok.': 'Sokak', 'No.': 'Numara',
+  },
+};
+
+// ============================================
 // Language Detection (using franc-min)
 // ============================================
+let francModule = null;
+
+async function loadFranc() {
+  if (!francModule) {
+    try {
+      francModule = await import('franc-min');
+    } catch (error) {
+      console.warn('[TTS Normalizer] franc-min not available:', error.message);
+    }
+  }
+  return francModule;
+}
+
 function detectLanguage(text, fallback = DEFAULT_LANG) {
   if (!text || text.length < 10) return fallback;
 
   try {
-    const { franc } = require('franc-min');
-    const detected = franc(text);
+    // Synchronous fallback - franc-min is ESM, so use preloaded module
+    if (francModule && francModule.franc) {
+      const detected = francModule.franc(text);
+      if (detected === 'und') return fallback;
+      const iso1 = ISO_639_3_TO_1[detected];
+      return (iso1 && LANGUAGE_WORDS[iso1]) ? iso1 : fallback;
+    }
+    return fallback;
+  } catch (error) {
+    console.warn('[TTS Normalizer] franc detection failed:', error.message);
+    return fallback;
+  }
+}
 
+// Async version for when you can await
+async function detectLanguageAsync(text, fallback = DEFAULT_LANG) {
+  if (!text || text.length < 10) return fallback;
+
+  try {
+    const franc = await loadFranc();
+    if (!franc || !franc.franc) return fallback;
+
+    const detected = franc.franc(text);
     if (detected === 'und') return fallback;
 
     const iso1 = ISO_639_3_TO_1[detected];
@@ -166,10 +292,13 @@ function normalizeTextForTTS(text, language = 'auto') {
   // 4. Spell out course numbers for accessibility (universal)
   normalized = normalizeCourseNumbers(normalized);
 
-  // 5. Normalize dates (multilingual via Intl)
+  // 5. Expand abbreviations (Sa. → Samstag, Str. → Straße)
+  normalized = expandAbbreviations(normalized, lang);
+
+  // 6. Normalize dates (multilingual via Intl)
   normalized = normalizeDates(normalized, lang);
 
-  // 6. Normalize times (multilingual via n2words)
+  // 7. Normalize times (multilingual via n2words)
   normalized = normalizeTimes(normalized, lang);
 
   // 7. Normalize prices (multilingual)
@@ -207,6 +336,24 @@ function removeMarkdown(text) {
     .replace(/^>\s*/gm, '');                // > blockquotes
 }
 
+function expandAbbreviations(text, lang = DEFAULT_LANG) {
+  // Get auto-generated + manual abbreviations for this language
+  const abbrevs = getAbbreviationMap(lang);
+
+  // Sort by length (longest first) to avoid partial replacements
+  const sortedAbbrevs = Object.entries(abbrevs).sort((a, b) => b[0].length - a[0].length);
+
+  for (const [abbrev, expansion] of sortedAbbrevs) {
+    // Escape special regex characters in abbreviation
+    const escaped = abbrev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Match abbreviation with word boundary or before digits (e.g., "Sa. 06")
+    const regex = new RegExp(`\\b${escaped}(?=\\s|\\d|$)`, 'g');
+    text = text.replace(regex, expansion);
+  }
+
+  return text;
+}
+
 function removeUrls(text) {
   return text
     .replace(/https?:\/\/[^\s]+/g, '')
@@ -231,12 +378,14 @@ function normalizeCourseNumbers(text) {
     return code.split('').join(' ');
   };
 
-  text = text.replace(/\*?\*?Kurs:?\*?\*?\s*([A-Z0-9]+)/gi, (match, code) => {
-    return `Kurs ${spellOut(code)}`;
-  });
-
+  // First handle "Kursnummer:" (more specific, must come first)
   text = text.replace(/Kursnummer:\s*([A-Z0-9]+)/gi, (match, code) => {
     return `Kursnummer ${spellOut(code)}`;
+  });
+
+  // Then handle standalone "Kurs:" (not followed by "nummer")
+  text = text.replace(/\*?\*?Kurs(?!nummer):?\*?\*?\s*([A-Z0-9]+)/gi, (match, code) => {
+    return `Kurs ${spellOut(code)}`;
   });
 
   return text;
