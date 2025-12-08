@@ -59,7 +59,8 @@ export default function WorkspaceChats() {
   const [canNext, setCanNext] = useState(false);
   const { t } = useTranslation();
   const { user } = useUser();
-  const isReadOnly = user?.role === "default";
+  // All users can manage workspace chats (API and frontend usage - data sovereignty)
+  const isReadOnly = false;
 
   const handleDumpChats = async (exportType) => {
     const chats = await System.exportChats(exportType, "workspace");
@@ -77,7 +78,7 @@ export default function WorkspaceChats() {
   const handleClearAllChats = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to clear all chats?\n\nThis action is irreversible.`
+        `Möchten Sie wirklich alle Chats löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`
       )
     )
       return false;

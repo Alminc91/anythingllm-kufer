@@ -66,6 +66,22 @@ function embeddedEndpoints(app) {
     }
   );
 
+  // Endpoint to check if embed is enabled (for widget hide/show)
+  app.get(
+    "/embed/:embedId/status",
+    [validEmbedConfig],
+    async (request, response) => {
+      try {
+        const embed = response.locals.embedConfig;
+        response.status(200).json({ enabled: embed.enabled });
+      } catch (e) {
+        console.error(e.message, e);
+        // On error, return enabled=true so widget still shows
+        response.status(200).json({ enabled: true });
+      }
+    }
+  );
+
   app.get(
     "/embed/:embedId/:sessionId",
     [validEmbedConfig],

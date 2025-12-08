@@ -27,7 +27,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
   const handleSuspend = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to disabled this embed?\nOnce disabled the embed will no longer respond to any chat requests.`
+        `Möchten Sie diese Einbettung wirklich deaktivieren?\n\nNach der Deaktivierung wird der Chatbot auf Ihrer Webseite ausgeblendet.`
       )
     )
       return false;
@@ -48,7 +48,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
   const handleDelete = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to delete this embed?\nOnce deleted this embed will no longer respond to chats or be active.\n\nThis action is irreversible.`
+        `Möchten Sie diese Einbettung wirklich löschen?\n\nNach dem Löschen wird der Chatbot auf Ihrer Webseite nicht mehr funktionieren.\n\nDiese Aktion kann nicht rückgängig gemacht werden.`
       )
     )
       return false;

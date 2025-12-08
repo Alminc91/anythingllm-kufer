@@ -17,8 +17,8 @@ export default function EmbedConfigsView() {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [embeds, setEmbeds] = useState([]);
-  // Only admin can create/modify embed widgets
-  const isReadOnly = user?.role === "default" || user?.role === "manager";
+  // All users (admin, manager, default) can manage embed widgets
+  const isReadOnly = false;
 
   useEffect(() => {
     async function fetchUsers() {

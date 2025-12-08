@@ -62,13 +62,13 @@ const HistoricalMessage = ({
         <div className="py-8 px-4 w-full flex gap-x-5 md:max-w-[80%] flex-col">
           <div className={`flex gap-x-5 ${alignmentCls}`}>
             <ProfileImage role={role} workspace={workspace} />
-            <div className="p-2 rounded-lg bg-red-50 text-red-500">
+            <div className="p-2 rounded-lg bg-amber-50 text-amber-700">
               <span className="inline-block">
-                <Warning className="h-4 w-4 mb-1 inline-block" /> Could not
-                respond to message.
+                <Warning className="h-4 w-4 mb-1 inline-block" />{" "}
+                Unser Chatbot ist vorübergehend nicht verfügbar.
               </span>
-              <p className="text-xs font-mono mt-2 border-l-2 border-red-300 pl-2 bg-red-200 p-2 rounded-sm">
-                {error}
+              <p className="text-xs mt-2">
+                Bitte versuchen Sie es später erneut.
               </p>
             </div>
           </div>

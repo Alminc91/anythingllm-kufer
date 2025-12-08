@@ -21,7 +21,7 @@ export default function ChatRow({ chat, onDelete, isReadOnly = false }) {
   const handleDelete = async () => {
     if (
       !window.confirm(
-        `Are you sure you want to delete this chat?\n\nThis action is irreversible.`
+        `Möchten Sie diesen Chat wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`
       )
     )
       return false;

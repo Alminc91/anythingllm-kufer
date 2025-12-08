@@ -52,7 +52,7 @@ function embedManagementEndpoints(app) {
 
   app.post(
     "/embeds/new",
-    [validatedRequest, flexUserRoleValid([ROLES.admin])],
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
@@ -73,7 +73,7 @@ function embedManagementEndpoints(app) {
 
   app.post(
     "/embed/update/:embedId",
-    [validatedRequest, flexUserRoleValid([ROLES.admin]), validEmbedConfigId],
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default]), validEmbedConfigId],
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
@@ -91,7 +91,7 @@ function embedManagementEndpoints(app) {
 
   app.delete(
     "/embed/:embedId",
-    [validatedRequest, flexUserRoleValid([ROLES.admin]), validEmbedConfigId],
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default]), validEmbedConfigId],
     async (request, response) => {
       try {
         const { embedId } = request.params;
@@ -154,7 +154,7 @@ function embedManagementEndpoints(app) {
 
   app.delete(
     "/embed/chats/:chatId",
-    [validatedRequest, flexUserRoleValid([ROLES.admin])],
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
     async (request, response) => {
       try {
         const { chatId } = request.params;
