@@ -441,32 +441,22 @@ function removeDisclaimers(text) {
 }
 
 function normalizeCourseNumbers(text) {
-  // "Kurs: R2250" → "Kursnummer R 2 2 5 0" (spelled out for accessibility)
-  // "Course: S4209C" → "Course S 4 2 0 9 C" (for English)
+  // Universal: Detect course code patterns and spell them out
+  // Pattern: 1-2 letters + 4-5 digits + optional letter (R7436, S4209C, AB1234)
+  // This works for ALL languages without needing to know the label word
 
   const spellOut = (code) => {
     // Add space between each character for TTS to spell it out
     return code.split('').join(' ');
   };
 
-  // German: "Kursnummer:" (more specific, must come first)
-  text = text.replace(/Kursnummer:\s*([A-Z0-9]+)/gi, (match, code) => {
-    return `Kursnummer ${spellOut(code)}`;
-  });
-
-  // German: "Kurs:" with colon - must have colon to avoid matching "Kurse", "Kursen" etc.
-  text = text.replace(/\bKurs:\s*([A-Z][A-Z0-9]+|\d{4,}[A-Z0-9]*)/gi, (match, code) => {
-    return `Kursnummer ${spellOut(code)}`;
-  });
-
-  // English: "Course:" - spell out course codes
-  text = text.replace(/\bCourse:\s*([A-Z0-9]+)/gi, (match, code) => {
-    return `Course ${spellOut(code)}`;
-  });
-
-  // Ukrainian/Russian: "Курс:" - spell out course codes
-  text = text.replace(/\bКурс:\s*([A-Z0-9]+)/gi, (match, code) => {
-    return `Курс ${spellOut(code)}`;
+  // Match course code patterns: R7436, S4209C, AB12345, etc.
+  // Must be preceded by word boundary or colon/space to avoid matching mid-word
+  // Pattern: 1-2 uppercase letters + 4-5 digits + optional uppercase letter
+  text = text.replace(/(?:^|[\s:])([A-Z]{1,2}\d{4,5}[A-Z]?)(?=[\s,.\n]|$)/g, (match, code) => {
+    // Preserve the leading character (space or colon)
+    const leadingChar = match[0] === code[0] ? '' : match[0];
+    return `${leadingChar}${spellOut(code)}`;
   });
 
   return text;
@@ -477,8 +467,21 @@ function normalizeCourseNumbers(text) {
  * "15x Ort: Online" → "15x, Ort: Online"
  */
 function addPausesBeforeLabels(text) {
-  // Common labels that benefit from a pause before them
-  const labels = ['Ort', 'Preis', 'Status', 'Kursnummer', 'Kurslink', 'Start', 'Ende', 'Dauer', 'Termin'];
+  // Common labels that benefit from a pause before them (multilingual)
+  const labels = [
+    // German
+    'Ort', 'Preis', 'Status', 'Kursnummer', 'Kurslink', 'Start', 'Ende', 'Dauer', 'Termin',
+    // Spanish
+    'Ubicación', 'Precio', 'Estado', 'Curso', 'Inicio', 'Fin', 'Duración',
+    // English
+    'Location', 'Price', 'Course', 'Duration',
+    // French
+    'Lieu', 'Prix', 'Cours', 'Début', 'Durée',
+    // Italian
+    'Luogo', 'Prezzo', 'Corso', 'Inizio', 'Fine',
+    // Ukrainian/Russian
+    'Місце', 'Ціна', 'Курс', 'Початок', 'Статус',
+  ];
 
   for (const label of labels) {
     // Add comma before label if not already preceded by comma, period, or newline
