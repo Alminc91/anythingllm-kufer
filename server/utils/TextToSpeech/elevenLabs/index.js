@@ -1,4 +1,5 @@
 const { ElevenLabsClient, stream } = require("elevenlabs");
+const { normalizeTextForTTS, detectLanguage } = require("../ttsTextNormalizer");
 
 class ElevenLabsTTS {
   constructor() {
@@ -13,6 +14,10 @@ class ElevenLabsTTS {
     this.voiceId =
       process.env.TTS_ELEVEN_LABS_VOICE_MODEL ?? "21m00Tcm4TlvDq8ikWAM";
     this.modelId = "eleven_multilingual_v2";
+  }
+
+  #log(text, ...args) {
+    console.log(`\x1b[32m[ElevenLabsTTS]\x1b[0m ${text}`, ...args);
   }
 
   static async voices(apiKey = null) {
@@ -36,9 +41,14 @@ class ElevenLabsTTS {
 
   async ttsBuffer(textInput) {
     try {
+      // Detect language and normalize text for better TTS output
+      const lang = detectLanguage(textInput, 'de');
+      const normalizedText = normalizeTextForTTS(textInput, lang);
+      this.#log(`Normalized text (${lang}, ${normalizedText.length} chars)`);
+
       const audio = await this.elevenLabs.generate({
         voice: this.voiceId,
-        text: textInput,
+        text: normalizedText,
         model_id: "eleven_multilingual_v2",
       });
       return Buffer.from(await this.#stream2buffer(audio));
