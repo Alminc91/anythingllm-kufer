@@ -537,6 +537,29 @@ function normalizeTimes(text, lang = DEFAULT_LANG) {
     return formatTime(h, m, lang);
   });
 
+  // English AM/PM times: "6:00 PM" → "six PM", "6:30 PM" → "six thirty PM"
+  text = text.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)/gi, (match, h, m, ampm) => {
+    const hourWord = numberToWords(parseInt(h), 'en');
+    const minute = parseInt(m);
+    if (minute === 0) {
+      return `${hourWord} ${ampm.toUpperCase()}`;
+    }
+    const minWord = numberToWords(minute, 'en');
+    return `${hourWord} ${minWord} ${ampm.toUpperCase()}`;
+  });
+
+  // English time ranges: "6:00 PM - 8:00 PM" → "six PM to eight PM"
+  text = text.replace(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[-–]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/gi,
+    (match, h1, m1, ampm1, h2, m2, ampm2) => {
+      const formatEnTime = (h, m, ampm) => {
+        const hourWord = numberToWords(parseInt(h), 'en');
+        const minute = parseInt(m);
+        if (minute === 0) return `${hourWord} ${ampm.toUpperCase()}`;
+        return `${hourWord} ${numberToWords(minute, 'en')} ${ampm.toUpperCase()}`;
+      };
+      return `${formatEnTime(h1, m1, ampm1)} to ${formatEnTime(h2, m2, ampm2)}`;
+    });
+
   return text;
 }
 
