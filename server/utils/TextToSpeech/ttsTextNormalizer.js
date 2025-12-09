@@ -568,12 +568,28 @@ function normalizePrices(text, lang = DEFAULT_LANG) {
 
 function normalizeRepetitions(text, lang = DEFAULT_LANG) {
   const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
-  const timesWord = langData.times || 'times';
 
-  // "| 15x" → ", 15 mal"
+  // Singular/plural forms for "Termin/Termine", "session/sessions", etc.
+  const singularPlural = {
+    de: { singular: 'Termin', plural: 'Termine' },
+    en: { singular: 'session', plural: 'sessions' },
+    fr: { singular: 'séance', plural: 'séances' },
+    es: { singular: 'sesión', plural: 'sesiones' },
+    it: { singular: 'sessione', plural: 'sessioni' },
+  };
+
+  const forms = singularPlural[lang] || singularPlural['de'];
+
+  // "| 15x" → ", 15 Termine" or "| 1x" → ", ein Termin"
   return text.replace(/\|?\s*(\d+)x\b/g, (match, count) => {
-    const numWord = numberToWords(parseInt(count), lang);
-    return `, ${numWord} ${timesWord}`;
+    const num = parseInt(count);
+    if (num === 1) {
+      // Special case: "ein Termin" (not "eins Termin")
+      const oneWord = lang === 'de' ? 'ein' : lang === 'fr' ? 'une' : lang === 'es' ? 'una' : 'one';
+      return `, ${oneWord} ${forms.singular}`;
+    }
+    const numWord = numberToWords(num, lang);
+    return `, ${numWord} ${forms.plural}`;
   });
 }
 
