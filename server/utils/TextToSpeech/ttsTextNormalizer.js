@@ -442,22 +442,31 @@ function removeDisclaimers(text) {
 
 function normalizeCourseNumbers(text) {
   // "Kurs: R2250" → "Kursnummer R 2 2 5 0" (spelled out for accessibility)
-  // "Kursnummer: 2026F96710" → "Kursnummer 2 0 2 6 F 9 6 7 1 0"
+  // "Course: S4209C" → "Course S 4 2 0 9 C" (for English)
 
   const spellOut = (code) => {
     // Add space between each character for TTS to spell it out
     return code.split('').join(' ');
   };
 
-  // First handle "Kursnummer:" (more specific, must come first)
+  // German: "Kursnummer:" (more specific, must come first)
   text = text.replace(/Kursnummer:\s*([A-Z0-9]+)/gi, (match, code) => {
     return `Kursnummer ${spellOut(code)}`;
   });
 
-  // Then handle standalone "Kurs:" with colon - must have colon to avoid matching "Kurse", "Kursen" etc.
-  // Course codes typically start with letter+digits (R2250) or are all digits (2026F96710)
+  // German: "Kurs:" with colon - must have colon to avoid matching "Kurse", "Kursen" etc.
   text = text.replace(/\bKurs:\s*([A-Z][A-Z0-9]+|\d{4,}[A-Z0-9]*)/gi, (match, code) => {
     return `Kursnummer ${spellOut(code)}`;
+  });
+
+  // English: "Course:" - spell out course codes
+  text = text.replace(/\bCourse:\s*([A-Z0-9]+)/gi, (match, code) => {
+    return `Course ${spellOut(code)}`;
+  });
+
+  // Ukrainian/Russian: "Курс:" - spell out course codes
+  text = text.replace(/\bКурс:\s*([A-Z0-9]+)/gi, (match, code) => {
+    return `Курс ${spellOut(code)}`;
   });
 
   return text;
