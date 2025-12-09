@@ -454,8 +454,9 @@ function normalizeCourseNumbers(text) {
     return `Kursnummer ${spellOut(code)}`;
   });
 
-  // Then handle standalone "Kurs:" - convert to "Kursnummer" for better understanding
-  text = text.replace(/\*?\*?Kurs(?!nummer):?\*?\*?\s*([A-Z0-9]+)/gi, (match, code) => {
+  // Then handle standalone "Kurs:" with colon - must have colon to avoid matching "Kurse", "Kursen" etc.
+  // Course codes typically start with letter+digits (R2250) or are all digits (2026F96710)
+  text = text.replace(/\bKurs:\s*([A-Z][A-Z0-9]+|\d{4,}[A-Z0-9]*)/gi, (match, code) => {
     return `Kursnummer ${spellOut(code)}`;
   });
 
