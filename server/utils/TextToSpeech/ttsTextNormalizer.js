@@ -27,9 +27,9 @@ const ISO_639_3_TO_1 = {
 // Language-specific words (only 3-4 words per language!)
 // ============================================
 const LANGUAGE_WORDS = {
-  // Format: { hour: "Uhr", times: "mal", currency: "Euro", locale: "de-DE" }
-  de: { hour: 'Uhr', times: 'mal', currency: 'Euro', locale: 'de-DE', n2w: 'de' },
-  en: { hour: "o'clock", times: 'times', currency: 'dollars', locale: 'en-US', n2w: 'en' },
+  // Format: { hour: "Uhr", times: "Termine", currency: "Euro", locale: "de-DE" }
+  de: { hour: 'Uhr', times: 'Termine', currency: 'Euro', locale: 'de-DE', n2w: 'de' },
+  en: { hour: "o'clock", times: 'sessions', currency: 'dollars', locale: 'en-US', n2w: 'en' },
   fr: { hour: 'heures', times: 'fois', currency: 'euros', locale: 'fr-FR', n2w: 'fr' },
   es: { hour: 'horas', times: 'veces', currency: 'euros', locale: 'es-ES', n2w: 'es' },
   it: { hour: 'ore', times: 'volte', currency: 'euro', locale: 'it-IT', n2w: 'it' },
@@ -161,17 +161,23 @@ const MANUAL_ABBREVIATIONS = {
 // Language Detection (using franc-min)
 // ============================================
 let francModule = null;
+let francLoadAttempted = false;
 
 async function loadFranc() {
-  if (!francModule) {
+  if (!francModule && !francLoadAttempted) {
+    francLoadAttempted = true;
     try {
       francModule = await import('franc-min');
+      console.log('[TTS Normalizer] franc-min loaded successfully');
     } catch (error) {
       console.warn('[TTS Normalizer] franc-min not available:', error.message);
     }
   }
   return francModule;
 }
+
+// Initialize franc-min on module load
+loadFranc().catch(() => {});
 
 function detectLanguage(text, fallback = DEFAULT_LANG) {
   if (!text || text.length < 10) return fallback;
@@ -227,6 +233,36 @@ function numberToWords(num, lang = DEFAULT_LANG) {
 // ============================================
 // Date Formatting (using Intl.DateTimeFormat)
 // ============================================
+
+/**
+ * Get ordinal suffix for a day number by language
+ * German: 1 → "1ter", 2 → "2ter", 3 → "3ter", etc.
+ * English: 1 → "1st", 2 → "2nd", 3 → "3rd", etc.
+ */
+function getOrdinalDay(day, lang = DEFAULT_LANG) {
+  const dayNum = parseInt(day);
+
+  if (lang === 'de') {
+    // German: always "ter" suffix for TTS (spoken as "erster", "zweiter", etc.)
+    return `${dayNum}ter`;
+  } else if (lang === 'en') {
+    // English ordinals
+    if (dayNum === 1 || dayNum === 21 || dayNum === 31) return `${dayNum}st`;
+    if (dayNum === 2 || dayNum === 22) return `${dayNum}nd`;
+    if (dayNum === 3 || dayNum === 23) return `${dayNum}rd`;
+    return `${dayNum}th`;
+  } else if (lang === 'fr') {
+    // French: 1er, then just the number
+    return dayNum === 1 ? '1er' : String(dayNum);
+  } else if (lang === 'es' || lang === 'it' || lang === 'pt') {
+    // Spanish/Italian/Portuguese: use ordinal marker
+    return `${dayNum}º`;
+  }
+
+  // Default: just the number
+  return String(dayNum);
+}
+
 function formatDate(dateStr, lang = DEFAULT_LANG) {
   try {
     const langData = LANGUAGE_WORDS[lang] || LANGUAGE_WORDS[DEFAULT_LANG];
@@ -241,11 +277,13 @@ function formatDate(dateStr, lang = DEFAULT_LANG) {
 
     if (isNaN(date.getTime())) return dateStr;
 
-    return new Intl.DateTimeFormat(locale, {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(date);
+    // Get month name from Intl
+    const monthName = new Intl.DateTimeFormat(locale, { month: 'long' }).format(date);
+
+    // Build date string with ordinal day for better TTS
+    const ordinalDay = getOrdinalDay(day, lang);
+
+    return `${ordinalDay} ${monthName} ${year}`;
   } catch (error) {
     return dateStr;
   }
@@ -283,7 +321,10 @@ function normalizeTextForTTS(text, language = 'auto') {
   // 1. Remove markdown formatting (universal)
   normalized = removeMarkdown(normalized);
 
-  // 2. Remove URLs (universal)
+  // 2. Convert numbered lists to ordinals (1. → Erstens,)
+  normalized = normalizeNumberedLists(normalized, lang);
+
+  // 3. Remove URLs (universal)
   normalized = removeUrls(normalized);
 
   // 3. Remove disclaimers (universal)
@@ -307,7 +348,10 @@ function normalizeTextForTTS(text, language = 'auto') {
   // 8. Normalize repetitions "15x" → "15 mal" (multilingual)
   normalized = normalizeRepetitions(normalized, lang);
 
-  // 9. Clean up separators (universal)
+  // 9. Add pauses before labels for better TTS flow
+  normalized = addPausesBeforeLabels(normalized);
+
+  // 10. Clean up separators (universal)
   normalized = cleanupSeparators(normalized);
 
   // 10. Clean up whitespace
@@ -334,6 +378,33 @@ function removeMarkdown(text) {
     .replace(/^#{1,6}\s*/gm, '')            // # headers
     .replace(/^[-*_]{3,}$/gm, '')           // horizontal rules
     .replace(/^>\s*/gm, '');                // > blockquotes
+}
+
+/**
+ * Convert numbered list items to spoken ordinals for better TTS
+ * "1. Finanzbuchführung" → "Erstens, Finanzbuchführung"
+ */
+function normalizeNumberedLists(text, lang = DEFAULT_LANG) {
+  // German ordinal words for list items
+  const ordinals = {
+    de: ['Erstens', 'Zweitens', 'Drittens', 'Viertens', 'Fünftens', 'Sechstens', 'Siebtens', 'Achtens', 'Neuntens', 'Zehntens'],
+    en: ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'],
+    fr: ['Premièrement', 'Deuxièmement', 'Troisièmement', 'Quatrièmement', 'Cinquièmement', 'Sixièmement', 'Septièmement', 'Huitièmement', 'Neuvièmement', 'Dixièmement'],
+    es: ['Primero', 'Segundo', 'Tercero', 'Cuarto', 'Quinto', 'Sexto', 'Séptimo', 'Octavo', 'Noveno', 'Décimo'],
+  };
+
+  const langOrdinals = ordinals[lang] || ordinals['de'];
+
+  // Match numbered list items: "1. ", "2. ", etc. at start of line or after newline
+  return text.replace(/(?:^|\n)\s*(\d{1,2})\.\s+/g, (match, num) => {
+    const index = parseInt(num) - 1;
+    if (index >= 0 && index < langOrdinals.length) {
+      return `\n${langOrdinals[index]}, `;
+    }
+    // Fallback for numbers > 10: "Nummer 11, "
+    const numberWord = lang === 'de' ? 'Nummer' : lang === 'en' ? 'Number' : 'Número';
+    return `\n${numberWord} ${num}, `;
+  });
 }
 
 function expandAbbreviations(text, lang = DEFAULT_LANG) {
@@ -370,7 +441,7 @@ function removeDisclaimers(text) {
 }
 
 function normalizeCourseNumbers(text) {
-  // "Kurs: R2250" → "Kurs R 2 2 5 0" (spelled out for accessibility)
+  // "Kurs: R2250" → "Kursnummer R 2 2 5 0" (spelled out for accessibility)
   // "Kursnummer: 2026F96710" → "Kursnummer 2 0 2 6 F 9 6 7 1 0"
 
   const spellOut = (code) => {
@@ -383,10 +454,28 @@ function normalizeCourseNumbers(text) {
     return `Kursnummer ${spellOut(code)}`;
   });
 
-  // Then handle standalone "Kurs:" (not followed by "nummer")
+  // Then handle standalone "Kurs:" - convert to "Kursnummer" for better understanding
   text = text.replace(/\*?\*?Kurs(?!nummer):?\*?\*?\s*([A-Z0-9]+)/gi, (match, code) => {
-    return `Kurs ${spellOut(code)}`;
+    return `Kursnummer ${spellOut(code)}`;
   });
+
+  return text;
+}
+
+/**
+ * Add pauses (commas) before common labels for better TTS flow
+ * "15x Ort: Online" → "15x, Ort: Online"
+ */
+function addPausesBeforeLabels(text) {
+  // Common labels that benefit from a pause before them
+  const labels = ['Ort', 'Preis', 'Status', 'Kursnummer', 'Kurslink', 'Start', 'Ende', 'Dauer', 'Termin'];
+
+  for (const label of labels) {
+    // Add comma before label if not already preceded by comma, period, or newline
+    // Match: word/number followed by space and label with colon
+    const regex = new RegExp(`([^,\\.\\n])\\s+(${label}:)`, 'gi');
+    text = text.replace(regex, '$1, $2');
+  }
 
   return text;
 }
