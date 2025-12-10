@@ -15,4 +15,27 @@ function getTTSProvider() {
   }
 }
 
-module.exports = { getTTSProvider };
+/**
+ * Checks if server-side TTS is available and configured.
+ * @returns {boolean} True if a server-side TTS provider is configured
+ */
+function isTTSConfigured() {
+  const provider = process.env.TTS_PROVIDER;
+  if (!provider || provider === "native") return false;
+
+  switch (provider) {
+    case "openai":
+      // OpenAI TTS requires API key
+      return !!process.env.OPEN_AI_KEY;
+    case "elevenlabs":
+      // ElevenLabs requires API key
+      return !!process.env.TTS_ELEVEN_LABS_KEY;
+    case "generic-openai":
+      // Generic OpenAI-compatible requires endpoint
+      return !!process.env.TTS_OPEN_AI_COMPATIBLE_ENDPOINT;
+    default:
+      return false;
+  }
+}
+
+module.exports = { getTTSProvider, isTTSConfigured };
