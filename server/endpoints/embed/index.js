@@ -13,7 +13,42 @@ const {
   writeResponseChunk,
 } = require("../../utils/helpers/chat/responses");
 const { getTTSProvider, isTTSConfigured } = require("../../utils/TextToSpeech");
-const { isSTTConfigured } = require("../../utils/SpeechToText");
+const { getSTTProvider, isSTTConfigured } = require("../../utils/SpeechToText");
+const multer = require("multer");
+
+// Configure multer for audio file uploads (store in memory)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 25 * 1024 * 1024, // 25MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept common audio formats
+    const allowedMimes = [
+      "audio/webm",
+      "audio/wav",
+      "audio/wave",
+      "audio/x-wav",
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/mp4",
+      "audio/m4a",
+      "audio/ogg",
+      "audio/flac",
+      "audio/x-flac",
+    ];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          `Unsupported audio format: ${file.mimetype}. Supported formats: webm, wav, mp3, mp4, m4a, ogg, flac`
+        ),
+        false
+      );
+    }
+  },
+});
 
 function embeddedEndpoints(app) {
   if (!app) return;
@@ -201,6 +236,71 @@ function embeddedEndpoints(app) {
         response.status(500).json({
           success: false,
           error: "TTS generation failed.",
+        });
+      }
+    }
+  );
+
+  /**
+   * POST /embed/:embedId/audio/stt
+   * Transcribes audio to text using the configured STT provider
+   *
+   * Request: multipart/form-data with 'file' field containing audio
+   * Optional query param: language (e.g., 'de', 'en')
+   * Response: { success: true, text: "transcribed text" }
+   */
+  app.post(
+    "/embed/:embedId/audio/stt",
+    [validEmbedConfig, upload.single("file")],
+    async (request, response) => {
+      try {
+        if (!isSTTConfigured()) {
+          return response.status(400).json({
+            success: false,
+            error: "STT is not configured on this server.",
+          });
+        }
+
+        if (!request.file) {
+          return response.status(400).json({
+            success: false,
+            error: "No audio file provided.",
+          });
+        }
+
+        const sttProvider = getSTTProvider();
+        if (!sttProvider) {
+          return response.status(500).json({
+            success: false,
+            error: "Failed to initialize STT provider.",
+          });
+        }
+
+        // Get optional language hint from query params
+        const language = request.query.language || null;
+
+        // Transcribe the audio
+        const text = await sttProvider.transcribe(request.file.buffer, {
+          language,
+          mimetype: request.file.mimetype,
+        });
+
+        if (!text) {
+          return response.status(200).json({
+            success: true,
+            text: "",
+          });
+        }
+
+        response.status(200).json({
+          success: true,
+          text: text.trim(),
+        });
+      } catch (e) {
+        console.error("[Embed STT]", e.message);
+        response.status(500).json({
+          success: false,
+          error: "Transcription failed.",
         });
       }
     }
