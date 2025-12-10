@@ -12,6 +12,8 @@ const {
   convertToChatHistory,
   writeResponseChunk,
 } = require("../../utils/helpers/chat/responses");
+const { getTTSProvider, isTTSConfigured } = require("../../utils/TextToSpeech");
+const { isSTTConfigured } = require("../../utils/SpeechToText");
 
 function embeddedEndpoints(app) {
   if (!app) return;
@@ -118,6 +120,88 @@ function embeddedEndpoints(app) {
       } catch (e) {
         console.error(e.message, e);
         response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // ============================================
+  // Audio Endpoints for Embed Widget (STT/TTS)
+  // ============================================
+
+  /**
+   * GET /embed/:embedId/audio/status
+   * Returns whether STT and TTS are configured on the server
+   */
+  app.get(
+    "/embed/:embedId/audio/status",
+    [validEmbedConfig],
+    async (request, response) => {
+      try {
+        response.status(200).json({
+          stt: isSTTConfigured(),
+          tts: isTTSConfigured(),
+          sttProvider: process.env.STT_PROVIDER || "native",
+          ttsProvider: process.env.TTS_PROVIDER || "native",
+        });
+      } catch (e) {
+        console.error("[Embed Audio Status]", e.message);
+        response.status(200).json({ stt: false, tts: false });
+      }
+    }
+  );
+
+  /**
+   * POST /embed/:embedId/audio/tts
+   * Converts text to speech using the configured TTS provider
+   *
+   * Request body: { text: "Text to speak" }
+   * Response: Audio buffer (audio/mpeg)
+   */
+  app.post(
+    "/embed/:embedId/audio/tts",
+    [validEmbedConfig],
+    async (request, response) => {
+      try {
+        const { text } = reqBody(request);
+
+        if (!text || typeof text !== "string" || text.trim().length === 0) {
+          return response.status(400).json({
+            success: false,
+            error: "No text provided for TTS.",
+          });
+        }
+
+        if (!isTTSConfigured()) {
+          return response.status(400).json({
+            success: false,
+            error: "TTS is not configured on this server.",
+          });
+        }
+
+        const TTSProvider = getTTSProvider();
+        if (!TTSProvider) {
+          return response.status(500).json({
+            success: false,
+            error: "Failed to initialize TTS provider.",
+          });
+        }
+
+        const audioBuffer = await TTSProvider.ttsBuffer(text);
+        if (!audioBuffer) {
+          return response.status(204).end(); // No content
+        }
+
+        response.writeHead(200, {
+          "Content-Type": "audio/mpeg",
+          "Content-Length": audioBuffer.length,
+        });
+        response.end(audioBuffer);
+      } catch (e) {
+        console.error("[Embed TTS]", e.message);
+        response.status(500).json({
+          success: false,
+          error: "TTS generation failed.",
+        });
       }
     }
   );
