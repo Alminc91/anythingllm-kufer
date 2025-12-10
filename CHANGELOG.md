@@ -18,6 +18,9 @@ Alle wichtigen Änderungen am AnythingLLM Server werden hier dokumentiert.
 - **TTS Normalizer**: Jetzt für ALLE TTS-Provider aktiv (OpenAI, ElevenLabs, Generic)
 - **Kursnummern-Erkennung**: Universelles Pattern `[A-Z]{1,2}\d{4,5}[A-Z]?` für alle Sprachen
 
+### Behoben
+- **isTTSConfigured()**: Fehlende Funktion für Embed Audio Status Endpoint hinzugefügt
+
 ---
 
 ## [2.6.0] - 2024-12-09
