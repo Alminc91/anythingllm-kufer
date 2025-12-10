@@ -226,8 +226,25 @@ function embeddedEndpoints(app) {
           return response.status(204).end(); // No content
         }
 
+        // Detect audio format from buffer header
+        let contentType = "audio/mpeg"; // default
+        if (audioBuffer.length >= 4) {
+          const header = audioBuffer.slice(0, 4).toString("hex");
+          if (header.startsWith("52494646")) {
+            // "RIFF" = WAV
+            contentType = "audio/wav";
+          } else if (header.startsWith("4f676753")) {
+            // "OggS" = OGG
+            contentType = "audio/ogg";
+          } else if (header.startsWith("664c6143")) {
+            // "fLaC" = FLAC
+            contentType = "audio/flac";
+          }
+          // MP3 starts with FF FB, FF FA, FF F3, or ID3
+        }
+
         response.writeHead(200, {
-          "Content-Type": "audio/mpeg",
+          "Content-Type": contentType,
           "Content-Length": audioBuffer.length,
         });
         response.end(audioBuffer);
