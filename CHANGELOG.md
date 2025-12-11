@@ -2,6 +2,28 @@
 
 Alle wichtigen Änderungen am AnythingLLM Server werden hier dokumentiert.
 
+## [2.8.0] - 2024-12-11
+
+### Hinzugefügt
+- **🌍 Unicode-Spracherkennung**: Erkennt Arabisch, Hebräisch, Chinesisch, Japanisch, Koreanisch, Russisch, Griechisch, Thai, Hindi, Bengali direkt via Unicode-Ranges
+  - `franc-min` versagt bei nicht-lateinischen Schriften
+  - Unicode-Erkennung ist deterministisch und schneller
+  - Fallback zu `franc-min` nur für lateinische Sprachen
+
+- **🎵 Audio-Format Auto-Detection**: TTS-Endpoint erkennt Format via Magic Bytes
+  - RIFF → WAV, OggS → OGG, fLaC → FLAC, sonst MP3
+  - Korrekter Content-Type Header für alle Formate
+
+### Geändert
+- **STT Native FormData**: `form-data` Package durch native `FormData + Blob` ersetzt
+  - `form-data` funktionierte nicht mit native `fetch()`
+  - Behebt "multipart: NextPart: EOF" Fehler bei Groq
+
+### Behoben
+- **STT Endpoint**: Korrekte Filename-Ableitung aus Mimetype für Groq Whisper
+
+---
+
 ## [2.7.0] - 2024-12-10
 
 ### Hinzugefügt
