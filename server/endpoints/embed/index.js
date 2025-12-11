@@ -296,18 +296,35 @@ function embeddedEndpoints(app) {
         // Get optional language hint from query params
         const language = request.query.language || null;
 
-        // Transcribe the audio
-        const text = await sttProvider.transcribe(request.file.buffer, {
-          language,
+        // Derive filename from mimetype for proper content-type handling
+        const mimeToExt = {
+          "audio/webm": "webm",
+          "audio/wav": "wav",
+          "audio/wave": "wav",
+          "audio/mpeg": "mp3",
+          "audio/mp3": "mp3",
+          "audio/mp4": "mp4",
+          "audio/m4a": "m4a",
+          "audio/ogg": "ogg",
+          "audio/flac": "flac",
+        };
+        const ext = mimeToExt[request.file.mimetype] || "webm";
+        const filename = `recording.${ext}`;
+
+        console.log("[Embed STT] Processing audio:", {
+          originalName: request.file.originalname,
           mimetype: request.file.mimetype,
+          size: request.file.buffer?.length,
+          filename,
         });
 
-        if (!text) {
-          return response.status(200).json({
-            success: true,
-            text: "",
-          });
-        }
+        // Transcribe the audio
+        const result = await sttProvider.transcribe(request.file.buffer, {
+          language,
+          filename,
+        });
+
+        const text = result?.text || "";
 
         response.status(200).json({
           success: true,

@@ -158,7 +158,7 @@ const MANUAL_ABBREVIATIONS = {
 };
 
 // ============================================
-// Language Detection (using franc-min)
+// Language Detection (using Unicode ranges + franc-min fallback)
 // ============================================
 let francModule = null;
 let francLoadAttempted = false;
@@ -179,11 +179,113 @@ async function loadFranc() {
 // Initialize franc-min on module load
 loadFranc().catch(() => {});
 
+/**
+ * Detect language from Unicode script ranges
+ * franc-min doesn't reliably detect non-Latin scripts, so we check them first
+ * Returns ISO 639-1 code or null if no script detected
+ */
+function detectScriptLanguage(text) {
+  if (!text) return null;
+
+  // Count characters in each script range
+  const scriptCounts = {
+    arabic: 0,      // Arabic, Persian, Urdu
+    hebrew: 0,      // Hebrew
+    cyrillic: 0,    // Russian, Ukrainian, Serbian, Bulgarian
+    greek: 0,       // Greek
+    chinese: 0,     // Chinese (CJK Ideographs)
+    japanese: 0,    // Japanese (Hiragana + Katakana)
+    korean: 0,      // Korean (Hangul)
+    thai: 0,        // Thai
+    devanagari: 0,  // Hindi, Sanskrit
+    bengali: 0,     // Bengali
+  };
+
+  for (const char of text) {
+    const code = char.charCodeAt(0);
+
+    // Arabic script (U+0600-U+06FF, U+0750-U+077F, U+08A0-U+08FF)
+    if ((code >= 0x0600 && code <= 0x06FF) ||
+        (code >= 0x0750 && code <= 0x077F) ||
+        (code >= 0x08A0 && code <= 0x08FF)) {
+      scriptCounts.arabic++;
+    }
+    // Hebrew script (U+0590-U+05FF)
+    else if (code >= 0x0590 && code <= 0x05FF) {
+      scriptCounts.hebrew++;
+    }
+    // Cyrillic script (U+0400-U+04FF, U+0500-U+052F)
+    else if ((code >= 0x0400 && code <= 0x04FF) ||
+             (code >= 0x0500 && code <= 0x052F)) {
+      scriptCounts.cyrillic++;
+    }
+    // Greek script (U+0370-U+03FF)
+    else if (code >= 0x0370 && code <= 0x03FF) {
+      scriptCounts.greek++;
+    }
+    // CJK Unified Ideographs (U+4E00-U+9FFF) - Chinese/Japanese/Korean
+    else if (code >= 0x4E00 && code <= 0x9FFF) {
+      scriptCounts.chinese++;
+    }
+    // Japanese Hiragana (U+3040-U+309F) and Katakana (U+30A0-U+30FF)
+    else if ((code >= 0x3040 && code <= 0x309F) ||
+             (code >= 0x30A0 && code <= 0x30FF)) {
+      scriptCounts.japanese++;
+    }
+    // Korean Hangul Syllables (U+AC00-U+D7AF) and Jamo (U+1100-U+11FF)
+    else if ((code >= 0xAC00 && code <= 0xD7AF) ||
+             (code >= 0x1100 && code <= 0x11FF)) {
+      scriptCounts.korean++;
+    }
+    // Thai script (U+0E00-U+0E7F)
+    else if (code >= 0x0E00 && code <= 0x0E7F) {
+      scriptCounts.thai++;
+    }
+    // Devanagari script (U+0900-U+097F) - Hindi
+    else if (code >= 0x0900 && code <= 0x097F) {
+      scriptCounts.devanagari++;
+    }
+    // Bengali script (U+0980-U+09FF)
+    else if (code >= 0x0980 && code <= 0x09FF) {
+      scriptCounts.bengali++;
+    }
+  }
+
+  // Find the script with the most characters
+  const maxScript = Object.entries(scriptCounts)
+    .filter(([_, count]) => count >= 3) // Minimum 3 characters to be confident
+    .sort((a, b) => b[1] - a[1])[0];
+
+  if (!maxScript) return null;
+
+  // Map script to language code
+  const scriptToLang = {
+    arabic: 'ar',      // Could be ar, fa, ur - default to Arabic
+    hebrew: 'he',
+    cyrillic: 'ru',    // Could be ru, uk, sr, bg - default to Russian
+    greek: 'el',
+    chinese: 'zh',
+    japanese: 'ja',
+    korean: 'ko',
+    thai: 'th',
+    devanagari: 'hi',
+    bengali: 'bn',
+  };
+
+  return scriptToLang[maxScript[0]] || null;
+}
+
 function detectLanguage(text, fallback = DEFAULT_LANG) {
   if (!text || text.length < 10) return fallback;
 
   try {
-    // Synchronous fallback - franc-min is ESM, so use preloaded module
+    // First: Try Unicode script detection (reliable for non-Latin scripts)
+    const scriptLang = detectScriptLanguage(text);
+    if (scriptLang && LANGUAGE_WORDS[scriptLang]) {
+      return scriptLang;
+    }
+
+    // Second: Use franc-min for Latin-based languages
     if (francModule && francModule.franc) {
       const detected = francModule.franc(text);
       if (detected === 'und') return fallback;
@@ -202,6 +304,13 @@ async function detectLanguageAsync(text, fallback = DEFAULT_LANG) {
   if (!text || text.length < 10) return fallback;
 
   try {
+    // First: Try Unicode script detection (reliable for non-Latin scripts)
+    const scriptLang = detectScriptLanguage(text);
+    if (scriptLang && LANGUAGE_WORDS[scriptLang]) {
+      return scriptLang;
+    }
+
+    // Second: Use franc-min for Latin-based languages
     const franc = await loadFranc();
     if (!franc || !franc.franc) return fallback;
 

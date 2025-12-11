@@ -33,9 +33,18 @@ class GenericOpenAiSTT {
     try {
       const formData = new FormData();
 
-      // Determine content type from filename or default to webm
-      const filename = options.filename || "audio.webm";
-      const contentType = this.#getContentType(filename);
+      // Determine content type from filename, mimetype, or default to webm
+      let contentType = "audio/webm";
+      let filename = "audio.webm";
+
+      if (options.mimetype) {
+        contentType = options.mimetype;
+        const ext = this.#getExtension(options.mimetype);
+        filename = options.filename || `audio.${ext}`;
+      } else if (options.filename) {
+        filename = options.filename;
+        contentType = this.#getContentType(filename);
+      }
 
       formData.append("file", audioBuffer, {
         filename: filename,
@@ -92,6 +101,21 @@ class GenericOpenAiSTT {
       flac: "audio/flac",
     };
     return mimeTypes[ext] || "audio/webm";
+  }
+
+  #getExtension(mimetype) {
+    const extMap = {
+      "audio/webm": "webm",
+      "audio/wav": "wav",
+      "audio/wave": "wav",
+      "audio/mpeg": "mp3",
+      "audio/mp3": "mp3",
+      "audio/mp4": "mp4",
+      "audio/m4a": "m4a",
+      "audio/ogg": "ogg",
+      "audio/flac": "flac",
+    };
+    return extMap[mimetype] || "webm";
   }
 
   static isConfigured() {
