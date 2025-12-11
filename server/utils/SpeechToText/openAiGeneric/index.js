@@ -1,4 +1,5 @@
-const FormData = require("form-data");
+// Use native FormData (Node 18+) instead of form-data package
+// form-data package doesn't work well with native fetch()
 
 class GenericOpenAiSTT {
   constructor() {
@@ -31,8 +32,6 @@ class GenericOpenAiSTT {
    */
   async transcribe(audioBuffer, options = {}) {
     try {
-      const formData = new FormData();
-
       // Determine content type from filename, mimetype, or default to webm
       let contentType = "audio/webm";
       let filename = "audio.webm";
@@ -46,10 +45,10 @@ class GenericOpenAiSTT {
         contentType = this.#getContentType(filename);
       }
 
-      formData.append("file", audioBuffer, {
-        filename: filename,
-        contentType: contentType,
-      });
+      // Use native FormData + Blob (works with native fetch in Node 18+)
+      const blob = new Blob([audioBuffer], { type: contentType });
+      const formData = new FormData();
+      formData.append("file", blob, filename);
       formData.append("model", this.model);
 
       // Add language if specified (in options or env)
@@ -58,10 +57,7 @@ class GenericOpenAiSTT {
         formData.append("language", language);
       }
 
-      const headers = {
-        ...formData.getHeaders(),
-      };
-
+      const headers = {};
       if (this.apiKey) {
         headers["Authorization"] = `Bearer ${this.apiKey}`;
       }
