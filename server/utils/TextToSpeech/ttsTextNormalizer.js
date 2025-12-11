@@ -460,6 +460,9 @@ function normalizeTextForTTS(text, language = 'auto') {
   // 9. Add pauses before labels for better TTS flow
   normalized = addPausesBeforeLabels(normalized);
 
+  // 9b. Add pauses after course titles for better TTS flow
+  normalized = addPausesAfterTitles(normalized);
+
   // 10. Clean up separators (universal)
   normalized = cleanupSeparators(normalized);
 
@@ -602,6 +605,31 @@ function addPausesBeforeLabels(text) {
     const regex = new RegExp(`([^,\\.\\n])\\s+(${label}:)`, 'gi');
     text = text.replace(regex, '$1, $2');
   }
+
+  return text;
+}
+
+/**
+ * Add pauses after course titles for better TTS flow
+ * "Drittens, Aqua-Fitness\nEin umfassendes..." → "Drittens, Aqua-Fitness.\nEin umfassendes..."
+ */
+function addPausesAfterTitles(text) {
+  // Match lines that start with ordinal words (result of normalizeNumberedLists)
+  // and don't end with punctuation - add a period for pause
+  const ordinalStarts = [
+    'Erstens', 'Zweitens', 'Drittens', 'Viertens', 'Fünftens',
+    'Sechstens', 'Siebtens', 'Achtens', 'Neuntens', 'Zehntens',
+    'First', 'Second', 'Third', 'Fourth', 'Fifth',
+    'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth',
+    'Nummer', 'Number', 'Número'
+  ];
+
+  const ordinalPattern = ordinalStarts.join('|');
+
+  // Match: ordinal + comma + title text (no ending punctuation) + newline
+  // Add period before newline for TTS pause
+  const regex = new RegExp(`((?:${ordinalPattern}),\\s*[^.!?\\n]+)(?=\\n)`, 'gi');
+  text = text.replace(regex, '$1.');
 
   return text;
 }
