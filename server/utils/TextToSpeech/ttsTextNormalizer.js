@@ -559,11 +559,15 @@ function normalizeCourseNumbers(text) {
     return code.split('').join(' ');
   };
 
+  // First: Add pause after "Kurs:" before course code to fix pronunciation
+  // "Kurs: S4209C" → "Kurs, S4209C" (comma helps TTS pronounce "Kurs" correctly)
+  text = text.replace(/\bKurs:\s*([A-Z]{1,2}\d{4,5}[A-Z]?)/gi, 'Kurs, $1');
+
   // Match course code patterns: R7436, S4209C, AB12345, etc.
   // Must be preceded by word boundary or colon/space to avoid matching mid-word
   // Pattern: 1-2 uppercase letters + 4-5 digits + optional uppercase letter
-  text = text.replace(/(?:^|[\s:])([A-Z]{1,2}\d{4,5}[A-Z]?)(?=[\s,.\n]|$)/g, (match, code) => {
-    // Preserve the leading character (space or colon)
+  text = text.replace(/(?:^|[\s:,])([A-Z]{1,2}\d{4,5}[A-Z]?)(?=[\s,.\n]|$)/g, (match, code) => {
+    // Preserve the leading character (space, colon, or comma)
     const leadingChar = match[0] === code[0] ? '' : match[0];
     return `${leadingChar}${spellOut(code)}`;
   });
@@ -579,7 +583,7 @@ function addPausesBeforeLabels(text) {
   // Common labels that benefit from a pause before them (multilingual)
   const labels = [
     // German
-    'Ort', 'Preis', 'Status', 'Kursnummer', 'Kurslink', 'Start', 'Ende', 'Dauer', 'Termin',
+    'Ort', 'Preis', 'Status', 'Kurs', 'Kursnummer', 'Kurslink', 'Start', 'Ende', 'Beginn', 'Dauer', 'Termin',
     // Spanish
     'Ubicación', 'Precio', 'Estado', 'Curso', 'Inicio', 'Fin', 'Duración',
     // English
