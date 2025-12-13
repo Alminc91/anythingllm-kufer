@@ -7,6 +7,7 @@ import { AUTH_USER } from "@/utils/constants";
 export default function EditUserModal({ currentUser, user, closeModal }) {
   const [role, setRole] = useState(user.role);
   const [error, setError] = useState(null);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
   const [messageLimit, setMessageLimit] = useState({
     enabled: user.dailyMessageLimit !== null,
     limit: user.dailyMessageLimit || 10,
@@ -14,11 +15,22 @@ export default function EditUserModal({ currentUser, user, closeModal }) {
 
   const handleUpdate = async (e) => {
     setError(null);
+    setPasswordMismatch(false);
     e.preventDefault();
     const data = {};
     const form = new FormData(e.target);
+    const password = form.get("password");
+    const confirmPassword = form.get("confirmPassword");
+
+    // Validate password confirmation if password is being changed
+    if (password && password !== confirmPassword) {
+      setPasswordMismatch(true);
+      return;
+    }
+
     for (var [key, value] of form.entries()) {
       if (!value || value === null) continue;
+      if (key === "confirmPassword") continue; // Don't send confirmPassword to API
       data[key] = value;
     }
     if (messageLimit.enabled) {
@@ -102,6 +114,27 @@ export default function EditUserModal({ currentUser, user, closeModal }) {
                 <p className="mt-2 text-xs text-white/60">
                   Password must be at least 8 characters long
                 </p>
+              </div>
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="block mb-2 text-sm font-medium text-white"
+                >
+                  Confirm Password
+                </label>
+                <input
+                  name="confirmPassword"
+                  type="text"
+                  className="border-none bg-theme-settings-input-bg w-full text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
+                  placeholder="Confirm new password"
+                  autoComplete="off"
+                  minLength={8}
+                />
+                {passwordMismatch && (
+                  <p className="mt-2 text-xs text-red-400">
+                    Passwords do not match
+                  </p>
+                )}
               </div>
               <div>
                 <label

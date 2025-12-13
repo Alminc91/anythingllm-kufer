@@ -2,6 +2,16 @@
 
 Alle wichtigen Änderungen am AnythingLLM Server werden hier dokumentiert.
 
+## [2.8.1] - 2025-12-13
+
+### Verbessert
+- **🔒 Passwort-Bestätigung im Admin-Panel**: EditUserModal verlangt jetzt Bestätigung des neuen Passworts
+  - Neues "Confirm Password" Feld verhindert Tippfehler beim Setzen von Kundenpasswörtern
+  - Fehlermeldung "Passwords do not match" bei unterschiedlichen Eingaben
+  - Submit wird blockiert bis beide Passwörter übereinstimmen
+
+---
+
 ## [2.8.0] - 2024-12-11
 
 ### Hinzugefügt
