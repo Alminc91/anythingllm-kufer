@@ -81,17 +81,17 @@ export default function BillingCustomerView({ workspace }) {
     return lastDay.getDate() - now.getDate();
   })();
 
-  // Get cycle period text (displayed as "pro [period]")
-  const getCyclePeriodText = () => {
-    if (!cycleInfo?.cycleDurationMonths) return t("Monat");
+  // Get cycle duration text with description in parentheses
+  const getCycleDurationText = () => {
+    if (!cycleInfo?.cycleDurationMonths) return t("1 Monat");
     switch (cycleInfo.cycleDurationMonths) {
-      case 1: return t("Monat");
+      case 1: return t("1 Monat");
       case 2: return t("2 Monate");
-      case 3: return t("Quartal");
+      case 3: return t("3 Monate (Quartal)");
       case 4: return t("4 Monate");
-      case 6: return t("Halbjahr");
-      case 12: return t("Jahr");
-      default: return t("Zyklus");
+      case 6: return t("6 Monate (Halbjahr)");
+      case 12: return t("12 Monate (Jahr)");
+      default: return `${cycleInfo.cycleDurationMonths} ${t("Monate")}`;
     }
   };
 
@@ -157,12 +157,9 @@ export default function BillingCustomerView({ workspace }) {
             </div>
 
             {/* Percentage */}
-            <div className="flex justify-between text-sm">
+            <div className="text-sm">
               <span className={`font-medium ${isAtLimit ? "text-red-400" : isNearLimit ? "text-yellow-400" : "text-white/60"}`}>
                 {percentage.toFixed(1)}% {t("genutzt")}
-              </span>
-              <span className="text-white/60">
-                {t("pro")} {getCyclePeriodText()}
               </span>
             </div>
           </div>
@@ -195,6 +192,14 @@ export default function BillingCustomerView({ workspace }) {
               <p className="text-white/60 text-xs block">{t("Verbleibend")}</p>
               <p className="text-sm font-medium text-white">
                 {daysRemaining} {daysRemaining === 1 ? t("Tag") : t("Tage")}
+              </p>
+            </div>
+
+            {/* Cycle Duration */}
+            <div>
+              <p className="text-white/60 text-xs block">{t("Zyklusdauer")}</p>
+              <p className="text-sm font-medium text-white">
+                {getCycleDurationText()}
               </p>
             </div>
           </div>

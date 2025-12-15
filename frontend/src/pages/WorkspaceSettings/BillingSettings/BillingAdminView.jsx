@@ -187,13 +187,36 @@ export default function BillingAdminView({ workspace }) {
               {usageData.cycleInfo && (
                 <div className="flex gap-x-8 pt-2">
                   <div>
-                    <span className="text-white/60 text-xs block">{t("Aktueller Zyklus")}</span>
-                    <p className="text-white text-sm font-medium">{t("Zyklus")} {usageData.cycleInfo.cycleNumber}</p>
+                    <span className="text-white/60 text-xs block">{t("Nächster Zyklusbeginn")}</span>
+                    <p className="text-white text-sm font-medium">
+                      {new Date(usageData.cycleInfo.nextReset).toLocaleDateString("de-DE", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
                   </div>
                   <div>
                     <span className="text-white/60 text-xs block">{t("Verbleibend")}</span>
                     <p className="text-white text-sm font-medium">
-                      {usageData.cycleInfo.daysRemaining} {t("Tage")}
+                      {usageData.cycleInfo.daysRemaining} {usageData.cycleInfo.daysRemaining === 1 ? t("Tag") : t("Tage")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-white/60 text-xs block">{t("Zyklusdauer")}</span>
+                    <p className="text-white text-sm font-medium">
+                      {(() => {
+                        const months = usageData.cycleInfo.cycleDurationMonths;
+                        switch (months) {
+                          case 1: return t("1 Monat");
+                          case 2: return t("2 Monate");
+                          case 3: return t("3 Monate (Quartal)");
+                          case 4: return t("4 Monate");
+                          case 6: return t("6 Monate (Halbjahr)");
+                          case 12: return t("12 Monate (Jahr)");
+                          default: return `${months} ${t("Monate")}`;
+                        }
+                      })()}
                     </p>
                   </div>
                 </div>
