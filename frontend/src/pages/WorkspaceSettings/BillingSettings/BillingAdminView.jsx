@@ -246,7 +246,7 @@ export default function BillingAdminView({ workspace }) {
             <div>
               <label
                 htmlFor="cycleStartDate"
-                className="block mb-2 text-sm font-medium text-white/80"
+                className="block mb-2 text-sm font-medium text-white"
               >
                 {t("Zyklus-Startdatum")}
               </label>
@@ -266,7 +266,7 @@ export default function BillingAdminView({ workspace }) {
             <div>
               <label
                 htmlFor="cycleDurationMonths"
-                className="block mb-2 text-sm font-medium text-white/80"
+                className="block mb-2 text-sm font-medium text-white"
               >
                 {t("Zyklus-Dauer")}
               </label>
