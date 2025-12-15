@@ -31,7 +31,7 @@ export default function BillingSettings({ workspace }) {
   // - Single-user mode: Always show admin view
   // - Multi-user mode with admin/manager: Show admin view
   // - Multi-user mode with default role: Show customer view (read-only)
-  const isMultiUserMode = settings?.multi_user_mode === true;
+  const isMultiUserMode = settings?.MultiUserMode === true;
   const isCustomer = isMultiUserMode && user?.role === "default";
 
   if (loading) {
