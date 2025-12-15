@@ -237,7 +237,7 @@ export default function BillingAdminView({ workspace }) {
               {t("Abrechnungszyklus")}
             </label>
             <p className="text-white/60 text-xs">
-              {t("Enterprise-Feature: Das Kontingent wird automatisch zum konfigurierten Zeitpunkt zuruckgesetzt.")}
+              {t("Das Nachrichtenkontingent wird automatisch zum konfigurierten Zeitpunkt zuruckgesetzt.")}
             </p>
           </div>
 
