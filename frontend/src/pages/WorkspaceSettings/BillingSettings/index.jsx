@@ -27,10 +27,12 @@ export default function BillingSettings({ workspace }) {
     fetchSettings();
   }, []);
 
-  // Determine if user has admin privileges
-  // In single-user mode (no multi_user_mode), treat user as admin
-  const isMultiUserMode = settings?.multi_user_mode;
-  const isAdmin = !isMultiUserMode || user?.role === "admin";
+  // Determine if user is a customer (default role in multi-user mode)
+  // - Single-user mode: Always show admin view
+  // - Multi-user mode with admin/manager: Show admin view
+  // - Multi-user mode with default role: Show customer view (read-only)
+  const isMultiUserMode = settings?.multi_user_mode === true;
+  const isCustomer = isMultiUserMode && user?.role === "default";
 
   if (loading) {
     return (
@@ -44,10 +46,10 @@ export default function BillingSettings({ workspace }) {
 
   if (!workspace) return null;
 
-  // Show admin view for admins, customer view for regular users
-  return isAdmin ? (
-    <BillingAdminView workspace={workspace} />
-  ) : (
+  // Show customer view for default users, admin view for everyone else
+  return isCustomer ? (
     <BillingCustomerView workspace={workspace} />
+  ) : (
+    <BillingAdminView workspace={workspace} />
   );
 }
