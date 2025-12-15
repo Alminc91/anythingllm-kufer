@@ -141,10 +141,11 @@ export default function ActiveWorkspaces() {
                                 </p>
                               </div>
                             </div>
-                            {user?.role !== "default" && (
-                              <div
-                                className={`flex items-center gap-x-[2px] transition-opacity duration-200 ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
-                              >
+                            <div
+                              className={`flex items-center gap-x-[2px] transition-opacity duration-200 ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}
+                            >
+                              {/* Upload button - only for admin/manager */}
+                              {user?.role !== "default" && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
@@ -156,33 +157,36 @@ export default function ActiveWorkspaces() {
                                 >
                                   <UploadSimple className="h-[20px] w-[20px]" />
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    navigate(
-                                      isInWorkspaceSettings
-                                        ? paths.workspace.chat(workspace.slug)
-                                        : paths.workspace.settings.generalAppearance(
-                                            workspace.slug
-                                          )
-                                    );
-                                  }}
-                                  className="rounded-md flex items-center justify-center text-[#A7A8A9] hover:text-white ml-auto p-[2px] hover:bg-[#646768]"
-                                  aria-label="General appearance settings"
-                                >
-                                  <GearSix
-                                    color={
-                                      isInWorkspaceSettings &&
-                                      workspace.slug === slug
-                                        ? "#46C8FF"
-                                        : undefined
-                                    }
-                                    className="h-[20px] w-[20px]"
-                                  />
-                                </button>
-                              </div>
-                            )}
+                              )}
+                              {/* Settings button - for all users (default users see only Billing tab) */}
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  // Default users go directly to billing, others to general settings
+                                  const targetPath = user?.role === "default"
+                                    ? paths.workspace.settings.billing(workspace.slug)
+                                    : paths.workspace.settings.generalAppearance(workspace.slug);
+                                  navigate(
+                                    isInWorkspaceSettings
+                                      ? paths.workspace.chat(workspace.slug)
+                                      : targetPath
+                                  );
+                                }}
+                                className="rounded-md flex items-center justify-center text-[#A7A8A9] hover:text-white ml-auto p-[2px] hover:bg-[#646768]"
+                                aria-label="Workspace settings"
+                              >
+                                <GearSix
+                                  color={
+                                    isInWorkspaceSettings &&
+                                    workspace.slug === slug
+                                      ? "#46C8FF"
+                                      : undefined
+                                  }
+                                  className="h-[20px] w-[20px]"
+                                />
+                              </button>
+                            </div>
                           </div>
                         </a>
                       </div>

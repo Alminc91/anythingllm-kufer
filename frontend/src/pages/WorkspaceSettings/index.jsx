@@ -92,20 +92,24 @@ function ShowWorkspaceChat() {
           >
             <ArrowUUpLeft className="h-5 w-5" weight="fill" />
           </Link>
+          {/* Admin/Manager only tabs */}
           <TabItem
             title={t("workspaces—settings.general")}
             icon={<Wrench className="h-6 w-6" />}
             to={paths.workspace.settings.generalAppearance(slug)}
+            visible={user?.role !== "default"}
           />
           <TabItem
             title={t("workspaces—settings.chat")}
             icon={<ChatText className="h-6 w-6" />}
             to={paths.workspace.settings.chatSettings(slug)}
+            visible={user?.role !== "default"}
           />
           <TabItem
             title={t("workspaces—settings.vector")}
             icon={<Database className="h-6 w-6" />}
             to={paths.workspace.settings.vectorDatabase(slug)}
+            visible={user?.role !== "default"}
           />
           <TabItem
             title={t("workspaces—settings.members")}
@@ -117,7 +121,9 @@ function ShowWorkspaceChat() {
             title={t("workspaces—settings.agent")}
             icon={<Robot className="h-6 w-6" />}
             to={paths.workspace.settings.agentConfig(slug)}
+            visible={user?.role !== "default"}
           />
+          {/* Billing tab - visible to all users */}
           <TabItem
             title={t("Abrechnung")}
             icon={<CreditCard className="h-6 w-6" />}
