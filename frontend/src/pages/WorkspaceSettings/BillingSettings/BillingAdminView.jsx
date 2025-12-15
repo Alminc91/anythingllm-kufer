@@ -139,37 +139,29 @@ export default function BillingAdminView({ workspace }) {
           ) : usageData ? (
             <div className="space-y-3 mt-4">
               {/* Usage Numbers */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-end justify-between">
                 <div>
-                  <span className="text-2xl font-bold text-white">
+                  <p className="text-white/60 text-sm">{t("Verbraucht")}</p>
+                  <p className="text-3xl font-bold text-white">
                     {usageData.messageCount?.toLocaleString("de-DE") ?? 0}
-                  </span>
-                  <span className="text-white/60 text-lg">
-                    {" / "}
-                    {usageData.messagesLimit?.toLocaleString("de-DE") ?? t("Unbegrenzt")}
-                  </span>
-                  <span className="text-white/60 text-sm ml-2">
-                    {t("Nachrichten")}
-                  </span>
+                    <span className="text-lg font-normal text-white/60">
+                      {" / "}{usageData.messagesLimit?.toLocaleString("de-DE") ?? t("Unbegrenzt")}
+                    </span>
+                  </p>
                 </div>
                 {usageData.messagesLimit && (
                   <div className="text-right">
-                    <span className={`text-lg font-semibold ${
-                      (usageData.messageCount / usageData.messagesLimit) >= 1
-                        ? "text-red-400"
-                        : (usageData.messageCount / usageData.messagesLimit) >= 0.8
-                          ? "text-yellow-400"
-                          : "text-green-400"
-                    }`}>
-                      {((usageData.messageCount / usageData.messagesLimit) * 100).toFixed(1)}%
-                    </span>
+                    <p className="text-white/60 text-sm">{t("Verbleibend")}</p>
+                    <p className="text-2xl font-semibold text-white">
+                      {Math.max(0, usageData.messagesLimit - usageData.messageCount).toLocaleString("de-DE")}
+                    </p>
                   </div>
                 )}
               </div>
 
               {/* Progress Bar */}
               {usageData.messagesLimit && (
-                <div className="w-full bg-theme-settings-input-bg rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-theme-settings-input-bg rounded-full h-4 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       (usageData.messageCount / usageData.messagesLimit) >= 1
@@ -180,6 +172,21 @@ export default function BillingAdminView({ workspace }) {
                     }`}
                     style={{ width: `${Math.min((usageData.messageCount / usageData.messagesLimit) * 100, 100)}%` }}
                   />
+                </div>
+              )}
+
+              {/* Percentage */}
+              {usageData.messagesLimit && (
+                <div className="text-sm">
+                  <span className={`font-medium ${
+                    (usageData.messageCount / usageData.messagesLimit) >= 1
+                      ? "text-red-400"
+                      : (usageData.messageCount / usageData.messagesLimit) >= 0.8
+                        ? "text-yellow-400"
+                        : "text-white/60"
+                  }`}>
+                    {((usageData.messageCount / usageData.messagesLimit) * 100).toFixed(1)}% {t("genutzt")}
+                  </span>
                 </div>
               )}
 
