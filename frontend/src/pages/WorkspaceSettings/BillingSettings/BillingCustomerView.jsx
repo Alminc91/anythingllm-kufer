@@ -202,6 +202,16 @@ export default function BillingCustomerView({ workspace }) {
                 {getCycleDurationText()}
               </p>
             </div>
+
+            {/* Current Cycle Number */}
+            {cycleInfo?.cycleNumber && (
+              <div>
+                <p className="text-white/60 text-xs block">{t("Aktueller Zyklus")}</p>
+                <p className="text-sm font-medium text-white">
+                  {cycleInfo.cycleNumber}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}

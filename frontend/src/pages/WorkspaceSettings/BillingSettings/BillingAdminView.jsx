@@ -219,6 +219,12 @@ export default function BillingAdminView({ workspace }) {
                       })()}
                     </p>
                   </div>
+                  <div>
+                    <span className="text-white/60 text-xs block">{t("Aktueller Zyklus")}</span>
+                    <p className="text-white text-sm font-medium">
+                      {usageData.cycleInfo.cycleNumber}
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
