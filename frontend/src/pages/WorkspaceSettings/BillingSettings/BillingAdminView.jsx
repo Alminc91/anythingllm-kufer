@@ -237,7 +237,7 @@ export default function BillingAdminView({ workspace }) {
               {t("Abrechnungszyklus")}
             </label>
             <p className="text-white/60 text-xs">
-              {t("Das Nachrichtenkontingent wird automatisch zum konfigurierten Zeitpunkt zuruckgesetzt.")}
+              {t("Das Nachrichtenkontingent wird automatisch zum konfigurierten Zeitpunkt zurückgesetzt.")}
             </p>
           </div>
 
@@ -279,7 +279,7 @@ export default function BillingAdminView({ workspace }) {
                 }}
                 className="border-none bg-theme-settings-input-bg text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
               >
-                <option value="">{t("-- Auswahlen --")}</option>
+                <option value="">{t("-- Auswählen --")}</option>
                 {cycleDurationOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -292,7 +292,7 @@ export default function BillingAdminView({ workspace }) {
           {/* Next Reset Info */}
           {nextReset && (
             <p className="text-sm text-white/60 mt-3">
-              {t("Nachster Reset:")}{" "}
+              {t("Nächster Zyklusbeginn:")}{" "}
               <span className="font-medium text-white">
                 {nextReset.toLocaleDateString("de-DE", {
                   day: "numeric",
@@ -308,7 +308,7 @@ export default function BillingAdminView({ workspace }) {
         <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
           <p className="text-sm text-blue-300">
             <strong>{t("Hinweis:")}</strong>{" "}
-            {t("Bei einem Upgrade kann das Startdatum auf das aktuelle Datum gesetzt werden, um den Zyklus sofort zuruckzusetzen. Das Kontingent beginnt dann neu zu zahlen.")}
+            {t("Bei einem Upgrade kann das Startdatum auf das aktuelle Datum gesetzt werden, um den Zyklus sofort zurückzusetzen. Das Kontingent beginnt dann neu zu zählen.")}
           </p>
         </div>
       </form>

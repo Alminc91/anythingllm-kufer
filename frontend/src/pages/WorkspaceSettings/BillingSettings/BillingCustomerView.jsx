@@ -81,14 +81,14 @@ export default function BillingCustomerView({ workspace }) {
     return lastDay.getDate() - now.getDate();
   })();
 
-  // Get cycle period text
+  // Get cycle period text (displayed as "pro [period]")
   const getCyclePeriodText = () => {
     if (!cycleInfo?.cycleDurationMonths) return t("Monat");
     switch (cycleInfo.cycleDurationMonths) {
       case 1: return t("Monat");
-      case 2: return t("2-Monatszyklus");
+      case 2: return t("2 Monate");
       case 3: return t("Quartal");
-      case 4: return t("4-Monatszyklus");
+      case 4: return t("4 Monate");
       case 6: return t("Halbjahr");
       case 12: return t("Jahr");
       default: return t("Zyklus");
@@ -111,7 +111,7 @@ export default function BillingCustomerView({ workspace }) {
             {t("Ihr Kontingent")}
           </label>
           <p className="text-white/60 text-xs">
-            {t("Ubersicht uber Ihre Nutzung in diesem Workspace.")}
+            {t("Übersicht über Ihre Nutzung in diesem Workspace.")}
           </p>
         </div>
 
@@ -123,7 +123,7 @@ export default function BillingCustomerView({ workspace }) {
               {t("Unbegrenztes Kontingent")}
             </p>
             <p className="text-white/60 text-sm mt-2">
-              {t("Sie konnen diesen Workspace ohne Einschrankungen nutzen.")}
+              {t("Sie können diesen Workspace ohne Einschränkungen nutzen.")}
             </p>
           </div>
         ) : (
@@ -184,7 +184,7 @@ export default function BillingCustomerView({ workspace }) {
           <div className="flex gap-x-8 mt-4">
             {/* Next Reset */}
             <div>
-              <p className="text-white/60 text-xs block">{t("Nachster Reset")}</p>
+              <p className="text-white/60 text-xs block">{t("Nächster Zyklusbeginn")}</p>
               <p className="text-sm font-medium text-white">
                 {formatNextReset()}
               </p>
@@ -211,16 +211,16 @@ export default function BillingCustomerView({ workspace }) {
           {isAtLimit ? (
             <>
               <p className="font-semibold text-red-300 mb-1">
-                {t("Kontingent erschopft")}
+                {t("Kontingent erschöpft")}
               </p>
               <p className="text-sm text-red-300/80">
-                {t("Sie haben Ihr Nachrichtenlimit fur diesen Zeitraum erreicht. Ihr Kontingent wird am")} {formatNextReset()} {t("erneuert.")}
+                {t("Sie haben Ihr Nachrichtenlimit für diesen Zeitraum erreicht. Ihr Kontingent wird am")} {formatNextReset()} {t("erneuert.")}
               </p>
             </>
           ) : (
             <>
               <p className="font-semibold text-yellow-300 mb-1">
-                {t("Kontingent fast erschopft")}
+                {t("Kontingent fast erschöpft")}
               </p>
               <p className="text-sm text-yellow-300/80">
                 {t("Sie haben bereits")} {percentage.toFixed(0)}% {t("Ihres Kontingents verbraucht. Es verbleiben noch")} {Math.max(0, messagesLimit - messageCount).toLocaleString("de-DE")} {t("Nachrichten bis zum")} {formatNextReset()}.
