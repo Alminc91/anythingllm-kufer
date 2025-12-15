@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import Workspace from "@/models/workspace";
 import PasswordModal, { usePasswordModal } from "@/components/Modals/Password";
@@ -51,8 +51,16 @@ function ShowWorkspaceChat() {
   const { t } = useTranslation();
   const { slug, tab } = useParams();
   const { user } = useUser();
+  const navigate = useNavigate();
   const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Redirect default users to billing tab if they try to access other tabs
+  useEffect(() => {
+    if (user?.role === "default" && tab !== "billing") {
+      navigate(paths.workspace.settings.billing(slug), { replace: true });
+    }
+  }, [user, tab, slug, navigate]);
 
   useEffect(() => {
     async function getWorkspace() {
