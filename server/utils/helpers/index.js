@@ -522,33 +522,52 @@ async function countMessagesForCurrentMonth(workspace) {
 }
 
 /**
- * Gets standardized message limit info for consistent response formatting
- * using only the current month's messages
+ * Gets standardized message limit info for consistent response formatting.
+ * Uses cycle-aware counting when cycle fields are set, otherwise falls back to monthly.
  * @param {Object} workspace - The workspace object
- * @returns {Promise<{messageCount: number, messagesLimit: number|null, contingent: string}>}
+ * @returns {Promise<{messageCount: number, messagesLimit: number|null, contingent: string, cycleInfo: Object|null}>}
  */
 async function getMessageLimitInfo(workspace) {
-  const messageCount = await countMessagesForCurrentMonth(workspace);
   const messagesLimit = workspace.messagesLimit; // Can be null
+  let messageCount;
+  let cycleInfo = null;
+
+  // Use cycle-aware counting if cycle fields are set
+  if (workspace.cycleStartDate) {
+    const {
+      countMessagesForCurrentCycle,
+      getCycleInfo
+    } = require("./cycleHelpers");
+    messageCount = await countMessagesForCurrentCycle(workspace);
+    cycleInfo = getCycleInfo(workspace);
+  } else {
+    // Fallback to monthly counting
+    messageCount = await countMessagesForCurrentMonth(workspace);
+  }
 
   return {
     messageCount,
     messagesLimit,
-    contingent: `${messageCount}/${messagesLimit ?? 'Unlimited'}`
+    contingent: `${messageCount}/${messagesLimit ?? 'Unlimited'}`,
+    cycleInfo
   };
 }
 
 /**
  * Gets the message limit error message in the appropriate language
  * @param {number} messagesLimit - The message limit set for the workspace
- * @param {string} monthName - The name of the current month
+ * @param {string} periodName - The name of the period (month name or cycle description)
  * @param {number} daysRemaining - Number of days until the limit resets
  * @param {string} resetDate - The formatted date when the limit will reset
  * @param {string} language - The language code (default: 'en')
+ * @param {Object|null} cycleInfo - Cycle info object if using cycle-based limits
  * @returns {string} - The translated error message
  */
-function getMessageLimitErrorText(messagesLimit, monthName, daysRemaining, resetDate, language = 'en') {
+function getMessageLimitErrorText(messagesLimit, periodName, daysRemaining, resetDate, language = 'en', cycleInfo = null) {
   const pluralS = daysRemaining !== 1 ? 's' : '';
+
+  // Determine period type for messaging
+  const isCycleBased = cycleInfo !== null;
 
   switch (language.toLowerCase()) {
     case 'de':
@@ -566,21 +585,64 @@ function getMessageLimitErrorText(messagesLimit, monthName, daysRemaining, reset
         'October': 'Oktober',
         'November': 'November',
         'December': 'Dezember'
-      }[monthName] || monthName;
+      }[periodName] || periodName;
 
       const germanPluralDays = daysRemaining !== 1 ? 'en' : '';
       const germanPluralMessages = messagesLimit !== 1 ? 'en' : '';
-      return `Dieser Workspace hat das monatliche Limit von ${messagesLimit} Nachricht${germanPluralMessages} für den Monat ${germanMonthName} erreicht. Ihr Limit wird in ${daysRemaining} Tag${germanPluralDays} am ${resetDate} zurückgesetzt.`;
+
+      if (isCycleBased) {
+        // Cycle-based message
+        const cyclePeriodText = getCyclePeriodText(cycleInfo.cycleDurationMonths, 'de');
+        return `Dieser Workspace hat das Limit von ${messagesLimit} Nachricht${germanPluralMessages} für den aktuellen ${cyclePeriodText} erreicht. Ihr Limit wird in ${daysRemaining} Tag${germanPluralDays} am ${resetDate} zurückgesetzt.`;
+      } else {
+        // Monthly message (backward compatible)
+        return `Dieser Workspace hat das monatliche Limit von ${messagesLimit} Nachricht${germanPluralMessages} für den Monat ${germanMonthName} erreicht. Ihr Limit wird in ${daysRemaining} Tag${germanPluralDays} am ${resetDate} zurückgesetzt.`;
+      }
 
     default:
       // English (default)
-      return `This workspace has reached the monthly message limit of ${messagesLimit} for ${monthName}. Your limit will reset in ${daysRemaining} day${pluralS} on ${resetDate}.`;
+      if (isCycleBased) {
+        const cyclePeriodText = getCyclePeriodText(cycleInfo.cycleDurationMonths, 'en');
+        return `This workspace has reached the message limit of ${messagesLimit} for the current ${cyclePeriodText}. Your limit will reset in ${daysRemaining} day${pluralS} on ${resetDate}.`;
+      } else {
+        return `This workspace has reached the monthly message limit of ${messagesLimit} for ${periodName}. Your limit will reset in ${daysRemaining} day${pluralS} on ${resetDate}.`;
+      }
   }
 }
 
-/**The d
+/**
+ * Gets the human-readable cycle period text
+ * @param {number} months - Cycle duration in months
+ * @param {string} language - Language code
+ * @returns {string} - Human-readable period text
+ */
+function getCyclePeriodText(months, language = 'en') {
+  if (language === 'de') {
+    switch (months) {
+      case 1: return 'Monatszyklus';
+      case 2: return '2-Monatszyklus';
+      case 3: return 'Quartalszyklus';
+      case 4: return '4-Monatszyklus';
+      case 6: return 'Halbjahreszyklus';
+      case 12: return 'Jahreszyklus';
+      default: return `${months}-Monatszyklus`;
+    }
+  } else {
+    switch (months) {
+      case 1: return 'monthly cycle';
+      case 2: return '2-month cycle';
+      case 3: return 'quarterly cycle';
+      case 4: return '4-month cycle';
+      case 6: return 'semi-annual cycle';
+      case 12: return 'annual cycle';
+      default: return `${months}-month cycle`;
+    }
+  }
+}
+
+/**
  * Checks if a workspace has reached its message limit and handles
- * the appropriate response
+ * the appropriate response. Supports both monthly and cycle-based limits.
  * @param {Object} workspace - The workspace object
  * @param {Object} response - Express response object or stream response
  * @param {Object} options - Additional options for handling responses
@@ -590,7 +652,7 @@ function getMessageLimitErrorText(messagesLimit, monthName, daysRemaining, reset
  * @param {string} options.uuid - UUID to use for the response (or will generate new one)
  * @param {boolean} options.returnData - If true, returns the data instead of sending a response (for compatibility handlers)
  * @param {string} options.language - The language code for error messages (default: 'en')
- * @returns {Promise<{limitReached: boolean, messageCount: number, messagesLimit: number|null, errorData: Object|null}>}
+ * @returns {Promise<{limitReached: boolean, messageCount: number, messagesLimit: number|null, errorData: Object|null, cycleInfo: Object|null}>}
  */
 async function checkWorkspaceMessagesLimit(workspace, response, options = {}) {
   const { v4: uuidv4 } = require("uuid");
@@ -604,18 +666,29 @@ async function checkWorkspaceMessagesLimit(workspace, response, options = {}) {
     language = 'de' // Default to German as requested
   } = options;
 
-  // Use the helper function to get consistent message limit info for the current month only
-  const { messageCount, messagesLimit, contingent } = await getMessageLimitInfo(workspace);
+  // Use the helper function to get consistent message limit info (cycle-aware)
+  const { messageCount, messagesLimit, contingent, cycleInfo } = await getMessageLimitInfo(workspace);
 
-  // Get the current month name for better log messages
+  // Determine period info for logging
   const now = new Date();
-  const monthName = now.toLocaleString('default', { month: 'long' });
+  const isCycleBased = cycleInfo !== null;
+  let periodDescription;
+
+  if (isCycleBased) {
+    const cyclePeriodText = getCyclePeriodText(cycleInfo.cycleDurationMonths, 'en');
+    periodDescription = `${cyclePeriodText} (Cycle #${cycleInfo.cycleNumber})`;
+  } else {
+    periodDescription = `${now.toLocaleString('default', { month: 'long' })} ${now.getFullYear()}`;
+  }
 
   console.log(`---
-Checking message limit for ${monthName} ${now.getFullYear()}
+Checking message limit for ${periodDescription}
 Workspace: ${workspace.name} (${workspace.slug})
 Message Count: ${messageCount}
 Limit: ${messagesLimit ?? 'Unlimited'}
+${isCycleBased ? `Cycle Start: ${cycleInfo.currentCycleStart.toISOString().split('T')[0]}
+Next Reset: ${cycleInfo.nextReset.toISOString().split('T')[0]}
+Days Remaining: ${cycleInfo.daysRemaining}` : ''}
 ---`);
 
   // Prepare return data regardless of limit status for consistent interface
@@ -623,36 +696,44 @@ Limit: ${messagesLimit ?? 'Unlimited'}
     limitReached: false,
     messageCount,
     messagesLimit,
-    errorData: null
+    errorData: null,
+    cycleInfo
   };
 
   if (messagesLimit !== null && messageCount >= messagesLimit) {
-    // Calculate days remaining until reset (first day of next month)
-    const now = new Date();
-    // First day of next month (when the limit resets)
-    const resetDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    let daysRemaining;
+    let resetDate;
+    let periodName;
 
-    // Calculate days remaining, excluding the first day of next month
-    // Get last day of current month by setting date to 0 of next month
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    // Now calculate the difference between today and the last day of the month
-    const daysRemaining = lastDayOfMonth.getDate() - now.getDate();
+    if (isCycleBased) {
+      // Use cycle-based reset info
+      daysRemaining = cycleInfo.daysRemaining;
+      resetDate = cycleInfo.nextReset;
+      periodName = getCyclePeriodText(cycleInfo.cycleDurationMonths, 'en');
+    } else {
+      // Fallback to monthly reset (first day of next month)
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      daysRemaining = lastDayOfMonth.getDate() - now.getDate();
+      resetDate = nextMonth;
+      periodName = now.toLocaleString('default', { month: 'long' });
+    }
 
     // Format the date using Intl.DateTimeFormat for proper internationalization
-    // Using German locale (de-DE) with day.month.year format
     const formattedResetDate = new Intl.DateTimeFormat('de-DE', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
     }).format(resetDate);
 
-    // Get the error message in the appropriate language
+    // Get the error message in the appropriate language (now cycle-aware)
     const errorMessage = getMessageLimitErrorText(
       messagesLimit,
-      monthName,
+      periodName,
       daysRemaining,
       formattedResetDate,
-      language
+      language,
+      cycleInfo // Pass cycle info for proper messaging
     );
 
     // Create consistent error data object with translated message
@@ -665,6 +746,14 @@ Limit: ${messagesLimit ?? 'Unlimited'}
       error: errorMessage,
       messages_limit: messagesLimit,
       contingent,
+      ...(isCycleBased && {
+        cycle_info: {
+          cycleNumber: cycleInfo.cycleNumber,
+          daysRemaining: cycleInfo.daysRemaining,
+          nextReset: cycleInfo.nextReset.toISOString(),
+          cycleDurationMonths: cycleInfo.cycleDurationMonths
+        }
+      })
     };
 
     result.limitReached = true;
@@ -707,5 +796,6 @@ module.exports = {
   countMessagesForCurrentMonth,
   getMessageLimitInfo,
   getMessageLimitErrorText,
+  getCyclePeriodText,
   checkWorkspaceMessagesLimit,
 };

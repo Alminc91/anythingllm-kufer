@@ -770,6 +770,124 @@ function apiAdminEndpoints(app) {
       }
     }
   );
+
+  // Enterprise: Cycle simulation endpoint for testing billing cycles
+  app.post("/v1/admin/test-cycle", [validApiKey], async (request, response) => {
+    /*
+    #swagger.tags = ['Admin']
+    #swagger.description = 'Enterprise feature: Simulate billing cycle calculations for testing purposes. Useful for verifying cycle logic without waiting months.'
+    #swagger.requestBody = {
+        description: 'Cycle simulation parameters',
+        required: true,
+        content: {
+          "application/json": {
+            example: {
+              cycleStartDate: "2025-01-15",
+              cycleDurationMonths: 3,
+              simulateDate: "2025-06-15",
+              messagesLimit: 500,
+              messagesSent: 230
+            }
+          }
+        }
+      }
+    #swagger.responses[200] = {
+      content: {
+        "application/json": {
+          schema: {
+            type: 'object',
+            example: {
+              input: { cycleStartDate: "2025-01-15", cycleDurationMonths: 3, simulateDate: "2025-06-15", messagesLimit: 500, messagesSent: 230 },
+              result: {
+                cycleNumber: 2,
+                currentCycleStart: "2025-04-15",
+                currentCycleEnd: "2025-07-14",
+                nextReset: "2025-07-15",
+                daysRemaining: 30,
+                messagesUsed: 230,
+                messagesRemaining: 270,
+                contingent: "230/500",
+                yearlyAnchorCheck: { originalDate: "2025-01-15", afterOneYear: "2026-01-15", matches: true }
+              }
+            }
+          }
+        }
+      }
+    }
+    #swagger.responses[403] = {
+      schema: {
+        "$ref": "#/definitions/InvalidAPIKey"
+      }
+    }
+    */
+    try {
+      const {
+        addMonths,
+        getCycleInfo
+      } = require("../../../utils/helpers/cycleHelpers");
+
+      const {
+        cycleStartDate,
+        cycleDurationMonths,
+        simulateDate,
+        messagesLimit,
+        messagesSent = 0
+      } = reqBody(request);
+
+      if (!cycleStartDate || !cycleDurationMonths) {
+        response.status(400).json({
+          success: false,
+          error: "cycleStartDate and cycleDurationMonths are required"
+        });
+        return;
+      }
+
+      const workspace = {
+        cycleStartDate,
+        cycleDurationMonths: parseInt(cycleDurationMonths),
+        messagesLimit: messagesLimit ? parseInt(messagesLimit) : null
+      };
+
+      const simDate = simulateDate ? new Date(simulateDate) : new Date();
+      const info = getCycleInfo(workspace, simDate);
+
+      // Calculate yearly anchor check
+      const originalDate = new Date(cycleStartDate);
+      const afterOneYear = addMonths(originalDate, 12);
+
+      response.status(200).json({
+        input: {
+          cycleStartDate,
+          cycleDurationMonths,
+          simulateDate: simDate.toISOString().split('T')[0],
+          messagesLimit,
+          messagesSent
+        },
+        result: {
+          cycleNumber: info.cycleNumber,
+          cycleDurationMonths: info.cycleDurationMonths,
+          currentCycleStart: info.currentCycleStart.toISOString().split('T')[0],
+          currentCycleEnd: info.currentCycleEnd.toISOString().split('T')[0],
+          nextReset: info.nextReset.toISOString().split('T')[0],
+          daysRemaining: info.daysRemaining,
+          originalDay: info.originalDay,
+          messagesUsed: messagesSent,
+          messagesRemaining: messagesLimit ? Math.max(0, messagesLimit - messagesSent) : 'Unlimited',
+          contingent: `${messagesSent}/${messagesLimit ?? 'Unlimited'}`,
+          yearlyAnchorCheck: {
+            originalDate: cycleStartDate,
+            afterOneYear: afterOneYear.toISOString().split('T')[0],
+            originalDay: originalDate.getDate(),
+            afterOneYearDay: afterOneYear.getDate(),
+            matches: originalDate.getDate() === afterOneYear.getDate()
+          }
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      response.status(500).json({ success: false, error: e.message });
+    }
+  });
 }
 
 module.exports = { apiAdminEndpoints };

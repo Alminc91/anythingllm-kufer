@@ -70,6 +70,8 @@ const Workspace = {
     "agentModel",
     "queryRefusalResponse",
     "vectorSearchMode",
+    "cycleStartDate",
+    "cycleDurationMonths",
   ],
 
   validations: {
@@ -157,6 +159,20 @@ const Workspace = {
       const limit = parseInt(value);
       if (isNullOrNaN(limit) || limit < 0) return null;
       return limit;
+    },
+    cycleStartDate: (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const date = new Date(value);
+      if (isNaN(date.getTime())) return null;
+      return date;
+    },
+    cycleDurationMonths: (value) => {
+      if (value === null || value === undefined || value === '') return null;
+      const months = parseInt(value);
+      // Only allow divisors of 12 for yearly consistency
+      const validDurations = [1, 2, 3, 4, 6, 12];
+      if (isNullOrNaN(months) || !validDurations.includes(months)) return null;
+      return months;
     },
   },
 

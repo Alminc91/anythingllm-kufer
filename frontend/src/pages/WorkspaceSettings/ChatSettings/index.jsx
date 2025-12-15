@@ -10,6 +10,7 @@ import ChatTemperatureSettings from "./ChatTemperatureSettings";
 import ChatModeSelection from "./ChatModeSelection";
 import WorkspaceLLMSelection from "./WorkspaceLLMSelection";
 import ChatQueryRefusalResponse from "./ChatQueryRefusalResponse";
+import CycleSettings from "./CycleSettings";
 import CTAButton from "@/components/lib/CTAButton";
 import useUser from "@/hooks/useUser";
 
@@ -82,6 +83,12 @@ export default function ChatSettings({ workspace }) {
         />
         {isAdmin && (
           <ChatMessagesLimitSettings
+            workspace={workspace}
+            setHasChanges={setHasChanges}
+          />
+        )}
+        {isAdmin && (
+          <CycleSettings
             workspace={workspace}
             setHasChanges={setHasChanges}
           />
