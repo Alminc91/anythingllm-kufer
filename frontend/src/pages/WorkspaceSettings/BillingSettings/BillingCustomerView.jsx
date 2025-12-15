@@ -103,22 +103,21 @@ export default function BillingCustomerView({ workspace }) {
   };
 
   return (
-    <div className="w-full max-w-2xl">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-white">
-          {t("Ihr Kontingent")}
-        </h2>
-        <p className="text-white/60 text-sm mt-1">
-          {t("Ubersicht uber Ihre Nutzung in diesem Workspace.")}
-        </p>
-      </div>
+    <div className="w-1/2 flex flex-col gap-y-6">
+      {/* Main Usage Section */}
+      <div>
+        <div className="flex flex-col gap-y-1">
+          <label className="block text-sm font-medium text-white">
+            {t("Ihr Kontingent")}
+          </label>
+          <p className="text-white/60 text-xs">
+            {t("Ubersicht uber Ihre Nutzung in diesem Workspace.")}
+          </p>
+        </div>
 
-      {/* Main Usage Card */}
-      <div className="bg-theme-bg-primary rounded-xl p-6 mb-6">
         {isUnlimited ? (
           /* Unlimited usage */
-          <div className="text-center py-8">
+          <div className="mt-4 text-center py-6">
             <div className="text-4xl mb-2">{"\u221E"}</div>
             <p className="text-xl font-semibold text-white">
               {t("Unbegrenztes Kontingent")}
@@ -129,9 +128,9 @@ export default function BillingCustomerView({ workspace }) {
           </div>
         ) : (
           /* Limited usage with progress bar */
-          <>
+          <div className="mt-4 space-y-3">
             {/* Usage Numbers */}
-            <div className="flex items-end justify-between mb-4">
+            <div className="flex items-end justify-between">
               <div>
                 <p className="text-white/60 text-sm">{t("Verbraucht")}</p>
                 <p className="text-3xl font-bold text-white">
@@ -150,7 +149,7 @@ export default function BillingCustomerView({ workspace }) {
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-theme-bg-secondary rounded-full h-4 mb-4 overflow-hidden">
+            <div className="w-full bg-theme-settings-input-bg rounded-full h-4 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${getProgressColor()}`}
                 style={{ width: `${percentage}%` }}
@@ -166,34 +165,45 @@ export default function BillingCustomerView({ workspace }) {
                 {t("pro")} {getCyclePeriodText()}
               </span>
             </div>
-          </>
+          </div>
         )}
       </div>
 
-      {/* Cycle Info Card */}
-      <div className="bg-theme-bg-primary rounded-xl p-6 mb-6">
-        <div className="grid grid-cols-2 gap-6">
-          {/* Next Reset */}
-          <div>
-            <p className="text-white/60 text-sm mb-1">{t("Nachster Reset")}</p>
-            <p className="text-lg font-semibold text-white">
-              {formatNextReset()}
+      {/* Cycle Info Section */}
+      {!isUnlimited && (
+        <div>
+          <div className="flex flex-col gap-y-1">
+            <label className="block text-sm font-medium text-white">
+              {t("Abrechnungszyklus")}
+            </label>
+            <p className="text-white/60 text-xs">
+              {t("Informationen zu Ihrem aktuellen Abrechnungszeitraum.")}
             </p>
           </div>
 
-          {/* Days Remaining */}
-          <div>
-            <p className="text-white/60 text-sm mb-1">{t("Verbleibende Tage")}</p>
-            <p className="text-lg font-semibold text-white">
-              {daysRemaining} {daysRemaining === 1 ? t("Tag") : t("Tage")}
-            </p>
+          <div className="flex gap-x-8 mt-4">
+            {/* Next Reset */}
+            <div>
+              <p className="text-white/60 text-xs block">{t("Nachster Reset")}</p>
+              <p className="text-sm font-medium text-white">
+                {formatNextReset()}
+              </p>
+            </div>
+
+            {/* Days Remaining */}
+            <div>
+              <p className="text-white/60 text-xs block">{t("Verbleibend")}</p>
+              <p className="text-sm font-medium text-white">
+                {daysRemaining} {daysRemaining === 1 ? t("Tag") : t("Tage")}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Warning when near or at limit */}
       {!isUnlimited && isNearLimit && (
-        <div className={`p-4 rounded-xl border ${
+        <div className={`p-4 rounded-lg border ${
           isAtLimit
             ? "bg-red-500/10 border-red-500/20"
             : "bg-yellow-500/10 border-yellow-500/20"

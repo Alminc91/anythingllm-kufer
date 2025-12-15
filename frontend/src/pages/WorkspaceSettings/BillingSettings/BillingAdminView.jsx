@@ -110,28 +110,20 @@ export default function BillingAdminView({ workspace }) {
   };
 
   return (
-    <div className="relative">
-      <form ref={formEl} onSubmit={handleUpdate} className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl font-semibold text-white">
-              {t("Abrechnung")}
-            </h2>
-            <p className="text-white/60 text-sm mt-1">
-              {t("Konfigurieren Sie Nachrichtenlimits und Abrechnungszyklen für diesen Workspace.")}
-            </p>
-          </div>
-          {hasChanges && (
+    <div id="workspace-billing-settings-container" className="relative">
+      <form ref={formEl} onSubmit={handleUpdate} className="w-1/2 flex flex-col gap-y-6">
+        {/* Save Button - top right like other tabs */}
+        {hasChanges && (
+          <div className="absolute top-0 right-0">
             <CTAButton type="submit" disabled={saving}>
-              {saving ? t("Speichern...") : t("Speichern")}
+              {saving ? t("Speichern...") : t("Workspace aktualisieren")}
             </CTAButton>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Current Usage Status - for admin to see customer's usage */}
-        <div className="bg-theme-bg-primary rounded-xl p-6 mb-6">
-          <div className="flex flex-col gap-y-1 mb-4">
+        <div>
+          <div className="flex flex-col gap-y-1">
             <label className="block text-sm font-medium text-white">
               {t("Aktueller Verbrauch")}
             </label>
@@ -141,11 +133,11 @@ export default function BillingAdminView({ workspace }) {
           </div>
 
           {loadingUsage ? (
-            <div className="animate-pulse text-white/40 text-sm">
+            <div className="animate-pulse text-white/60 text-sm mt-4">
               {t("Lade Verbrauchsdaten...")}
             </div>
           ) : usageData ? (
-            <div className="space-y-4">
+            <div className="space-y-3 mt-4">
               {/* Usage Numbers */}
               <div className="flex items-center justify-between">
                 <div>
@@ -156,7 +148,7 @@ export default function BillingAdminView({ workspace }) {
                     {" / "}
                     {usageData.messagesLimit?.toLocaleString("de-DE") ?? t("Unbegrenzt")}
                   </span>
-                  <span className="text-white/40 text-sm ml-2">
+                  <span className="text-white/60 text-sm ml-2">
                     {t("Nachrichten")}
                   </span>
                 </div>
@@ -177,7 +169,7 @@ export default function BillingAdminView({ workspace }) {
 
               {/* Progress Bar */}
               {usageData.messagesLimit && (
-                <div className="w-full bg-theme-bg-secondary rounded-full h-3 overflow-hidden">
+                <div className="w-full bg-theme-settings-input-bg rounded-full h-3 overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       (usageData.messageCount / usageData.messagesLimit) >= 1
@@ -193,13 +185,13 @@ export default function BillingAdminView({ workspace }) {
 
               {/* Cycle Info */}
               {usageData.cycleInfo && (
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/10">
+                <div className="flex gap-x-8 pt-2">
                   <div>
-                    <span className="text-white/40 text-xs">{t("Zyklus")}</span>
-                    <p className="text-white text-sm font-medium">#{usageData.cycleInfo.cycleNumber}</p>
+                    <span className="text-white/60 text-xs block">{t("Aktueller Zyklus")}</span>
+                    <p className="text-white text-sm font-medium">{t("Zyklus")} {usageData.cycleInfo.cycleNumber}</p>
                   </div>
                   <div>
-                    <span className="text-white/40 text-xs">{t("Verbleibend")}</span>
+                    <span className="text-white/60 text-xs block">{t("Verbleibend")}</span>
                     <p className="text-white text-sm font-medium">
                       {usageData.cycleInfo.daysRemaining} {t("Tage")}
                     </p>
@@ -208,15 +200,15 @@ export default function BillingAdminView({ workspace }) {
               )}
             </div>
           ) : (
-            <div className="text-white/40 text-sm">
+            <div className="text-white/60 text-sm mt-4">
               {t("Keine Verbrauchsdaten verfügbar")}
             </div>
           )}
         </div>
 
         {/* Messages Limit Section */}
-        <div className="bg-theme-bg-primary rounded-xl p-6 mb-6">
-          <div className="flex flex-col gap-y-1 mb-4">
+        <div>
+          <div className="flex flex-col gap-y-1">
             <label htmlFor="messagesLimit" className="block text-sm font-medium text-white">
               {t("Nachrichtenlimit")}
             </label>
@@ -231,7 +223,7 @@ export default function BillingAdminView({ workspace }) {
             step={1}
             onWheel={(e) => e.target.blur()}
             defaultValue={workspace?.messagesLimit ?? ""}
-            className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
+            className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 mt-4"
             placeholder={t("Unbegrenzt")}
             autoComplete="off"
             onChange={() => setHasChanges(true)}
@@ -239,8 +231,8 @@ export default function BillingAdminView({ workspace }) {
         </div>
 
         {/* Billing Cycle Section */}
-        <div className="bg-theme-bg-primary rounded-xl p-6 mb-6">
-          <div className="flex flex-col gap-y-1 mb-4">
+        <div>
+          <div className="flex flex-col gap-y-1">
             <label className="block text-sm font-medium text-white">
               {t("Abrechnungszyklus")}
             </label>
@@ -249,7 +241,7 @@ export default function BillingAdminView({ workspace }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             {/* Cycle Start Date */}
             <div>
               <label
@@ -268,9 +260,6 @@ export default function BillingAdminView({ workspace }) {
                 }}
                 className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
               />
-              <p className="mt-1 text-xs text-white/40">
-                {t("Ab diesem Datum beginnt der Abrechnungszyklus")}
-              </p>
             </div>
 
             {/* Cycle Duration */}
@@ -297,31 +286,26 @@ export default function BillingAdminView({ workspace }) {
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-white/40">
-                {t("Nach dieser Dauer wird das Kontingent zuruckgesetzt")}
-              </p>
             </div>
           </div>
 
           {/* Next Reset Info */}
           {nextReset && (
-            <div className="mt-4 p-3 bg-theme-bg-secondary rounded-lg border border-white/10">
-              <p className="text-sm text-white">
-                <span className="text-white/60">{t("Nachster Reset:")}</span>{" "}
-                <span className="font-medium">
-                  {nextReset.toLocaleDateString("de-DE", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                </span>
-              </p>
-            </div>
+            <p className="text-sm text-white/60 mt-3">
+              {t("Nachster Reset:")}{" "}
+              <span className="font-medium text-white">
+                {nextReset.toLocaleDateString("de-DE", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+            </p>
           )}
         </div>
 
         {/* Info Box */}
-        <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
+        <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
           <p className="text-sm text-blue-300">
             <strong>{t("Hinweis:")}</strong>{" "}
             {t("Bei einem Upgrade kann das Startdatum auf das aktuelle Datum gesetzt werden, um den Zyklus sofort zuruckzusetzen. Das Kontingent beginnt dann neu zu zahlen.")}
