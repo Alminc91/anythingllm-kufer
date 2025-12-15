@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Workspace from "@/models/workspace";
 import showToast from "@/utils/toast";
@@ -8,12 +8,29 @@ import CTAButton from "@/components/lib/CTAButton";
 /**
  * Admin View for Billing Settings
  * Allows admins to configure message limits and billing cycles
+ * Also shows current usage statistics for support purposes
  */
 export default function BillingAdminView({ workspace }) {
   const { t } = useTranslation();
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [usageData, setUsageData] = useState(null);
+  const [loadingUsage, setLoadingUsage] = useState(true);
   const formEl = useRef(null);
+
+  // Fetch current usage data
+  useEffect(() => {
+    async function fetchUsageData() {
+      try {
+        const data = await Workspace.getUsageInfo(workspace.slug);
+        setUsageData(data);
+      } catch (err) {
+        console.error("Failed to fetch usage data:", err);
+      }
+      setLoadingUsage(false);
+    }
+    fetchUsageData();
+  }, [workspace.slug]);
 
   // Format date for input (YYYY-MM-DD)
   const formatDateForInput = (dateValue) => {
@@ -109,6 +126,91 @@ export default function BillingAdminView({ workspace }) {
             <CTAButton type="submit" disabled={saving}>
               {saving ? t("Speichern...") : t("Speichern")}
             </CTAButton>
+          )}
+        </div>
+
+        {/* Current Usage Status - for admin to see customer's usage */}
+        <div className="bg-theme-bg-primary rounded-xl p-6 mb-6">
+          <div className="flex flex-col gap-y-1 mb-4">
+            <label className="block text-sm font-medium text-white">
+              {t("Aktueller Verbrauch")}
+            </label>
+            <p className="text-white/60 text-xs">
+              {t("Live-Ansicht des Kundenverbrauchs für diesen Workspace.")}
+            </p>
+          </div>
+
+          {loadingUsage ? (
+            <div className="animate-pulse text-white/40 text-sm">
+              {t("Lade Verbrauchsdaten...")}
+            </div>
+          ) : usageData ? (
+            <div className="space-y-4">
+              {/* Usage Numbers */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-2xl font-bold text-white">
+                    {usageData.messageCount?.toLocaleString("de-DE") ?? 0}
+                  </span>
+                  <span className="text-white/60 text-lg">
+                    {" / "}
+                    {usageData.messagesLimit?.toLocaleString("de-DE") ?? t("Unbegrenzt")}
+                  </span>
+                  <span className="text-white/40 text-sm ml-2">
+                    {t("Nachrichten")}
+                  </span>
+                </div>
+                {usageData.messagesLimit && (
+                  <div className="text-right">
+                    <span className={`text-lg font-semibold ${
+                      (usageData.messageCount / usageData.messagesLimit) >= 1
+                        ? "text-red-400"
+                        : (usageData.messageCount / usageData.messagesLimit) >= 0.8
+                          ? "text-yellow-400"
+                          : "text-green-400"
+                    }`}>
+                      {((usageData.messageCount / usageData.messagesLimit) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Progress Bar */}
+              {usageData.messagesLimit && (
+                <div className="w-full bg-theme-bg-secondary rounded-full h-3 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (usageData.messageCount / usageData.messagesLimit) >= 1
+                        ? "bg-red-500"
+                        : (usageData.messageCount / usageData.messagesLimit) >= 0.8
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                    }`}
+                    style={{ width: `${Math.min((usageData.messageCount / usageData.messagesLimit) * 100, 100)}%` }}
+                  />
+                </div>
+              )}
+
+              {/* Cycle Info */}
+              {usageData.cycleInfo && (
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/10">
+                  <div>
+                    <span className="text-white/40 text-xs">{t("Zyklus")}</span>
+                    <p className="text-white text-sm font-medium">#{usageData.cycleInfo.cycleNumber}</p>
+                  </div>
+                  <div>
+                    <span className="text-white/40 text-xs">{t("Verbleibend")}</span>
+                    <p className="text-white text-sm font-medium">
+                      {usageData.cycleInfo.daysRemaining} {t("Tage")}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-white/40 text-sm">
+              {t("Keine Verbrauchsdaten verfügbar")}
+            </div>
           )}
         </div>
 
