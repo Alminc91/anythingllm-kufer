@@ -1068,6 +1068,42 @@ function workspaceEndpoints(app) {
     }
   );
 
+  /**
+   * Gets usage information for a workspace (billing display)
+   * Returns message count, limit, and cycle info
+   */
+  app.get(
+    "/workspace/:slug/usage",
+    [validatedRequest, flexUserRoleValid([ROLES.all]), validWorkspaceSlug],
+    async (request, response) => {
+      try {
+        const workspace = response.locals.workspace;
+        const { getMessageLimitInfo } = require("../utils/helpers");
+
+        const usageInfo = await getMessageLimitInfo(workspace);
+
+        response.status(200).json({
+          messageCount: usageInfo.messageCount,
+          messagesLimit: usageInfo.messagesLimit,
+          contingent: usageInfo.contingent,
+          cycleInfo: usageInfo.cycleInfo
+            ? {
+                cycleNumber: usageInfo.cycleInfo.cycleNumber,
+                cycleDurationMonths: usageInfo.cycleInfo.cycleDurationMonths,
+                currentCycleStart: usageInfo.cycleInfo.currentCycleStart,
+                currentCycleEnd: usageInfo.cycleInfo.currentCycleEnd,
+                nextReset: usageInfo.cycleInfo.nextReset,
+                daysRemaining: usageInfo.cycleInfo.daysRemaining,
+              }
+            : null,
+        });
+      } catch (error) {
+        console.error("Error fetching workspace usage:", error);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
   // Parsed Files in separate endpoint just to keep the workspace endpoints clean
   workspaceParsedFilesEndpoints(app);
 }

@@ -4,24 +4,15 @@ import showToast from "@/utils/toast";
 import { castToType } from "@/utils/types";
 import { useEffect, useRef, useState } from "react";
 import ChatHistorySettings from "./ChatHistorySettings";
-import ChatMessagesLimitSettings from "./ChatMessagesLimitSettings";
 import ChatPromptSettings from "./ChatPromptSettings";
 import ChatTemperatureSettings from "./ChatTemperatureSettings";
 import ChatModeSelection from "./ChatModeSelection";
 import WorkspaceLLMSelection from "./WorkspaceLLMSelection";
 import ChatQueryRefusalResponse from "./ChatQueryRefusalResponse";
-import CycleSettings from "./CycleSettings";
 import CTAButton from "@/components/lib/CTAButton";
-import useUser from "@/hooks/useUser";
 
 export default function ChatSettings({ workspace }) {
-  const { user } = useUser();
   const [settings, setSettings] = useState({});
-
-  // Only admin can modify messagesLimit (billing protection)
-  // In single-user mode (no multi_user_mode), treat user as admin
-  const isMultiUserMode = settings?.multi_user_mode;
-  const isAdmin = !isMultiUserMode || user?.role === "admin";
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -84,18 +75,6 @@ export default function ChatSettings({ workspace }) {
           workspace={workspace}
           setHasChanges={setHasChanges}
         />
-        {isAdmin && (
-          <ChatMessagesLimitSettings
-            workspace={workspace}
-            setHasChanges={setHasChanges}
-          />
-        )}
-        {isAdmin && (
-          <CycleSettings
-            workspace={workspace}
-            setHasChanges={setHasChanges}
-          />
-        )}
         <ChatPromptSettings
           workspace={workspace}
           setHasChanges={setHasChanges}

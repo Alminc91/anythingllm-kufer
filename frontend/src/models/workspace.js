@@ -576,6 +576,26 @@ const Workspace = {
     return response;
   },
 
+  /**
+   * Gets usage information for billing display
+   * @param {string} slug - workspace slug
+   * @returns {Promise<{messageCount: number, messagesLimit: number|null, cycleInfo: object|null}>}
+   */
+  getUsageInfo: async function (slug) {
+    return await fetch(`${API_BASE}/workspace/${slug}/usage`, {
+      method: "GET",
+      headers: baseHeaders(),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch usage info.");
+        return res.json();
+      })
+      .catch((e) => {
+        console.error(e);
+        return { messageCount: 0, messagesLimit: null, cycleInfo: null };
+      });
+  },
+
   threads: WorkspaceThread,
 };
 
