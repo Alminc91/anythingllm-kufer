@@ -16,9 +16,12 @@ import useUser from "@/hooks/useUser";
 
 export default function ChatSettings({ workspace }) {
   const { user } = useUser();
-  // Only admin can modify messagesLimit (billing protection)
-  const isAdmin = user?.role === "admin";
   const [settings, setSettings] = useState({});
+
+  // Only admin can modify messagesLimit (billing protection)
+  // In single-user mode (no multi_user_mode), treat user as admin
+  const isMultiUserMode = settings?.multi_user_mode;
+  const isAdmin = !isMultiUserMode || user?.role === "admin";
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
 
