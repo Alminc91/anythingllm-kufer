@@ -297,7 +297,7 @@ function embeddedEndpoints(app) {
         // Check if provider supports streaming
         if (typeof TTSProvider.ttsStream === 'function') {
           response.writeHead(200, {
-            "Content-Type": "audio/wav",
+            "Content-Type": "audio/mpeg",
             "Transfer-Encoding": "chunked",
             "Cache-Control": "no-cache",
           });

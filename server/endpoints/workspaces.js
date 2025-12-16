@@ -658,10 +658,10 @@ function workspaceEndpoints(app) {
 
         const TTSProvider = getTTSProvider();
 
-        // Check if provider supports streaming
+        // Check if provider supports streaming (outputs MP3 via ffmpeg)
         if (typeof TTSProvider.ttsStream === 'function') {
           response.writeHead(200, {
-            "Content-Type": "audio/wav",
+            "Content-Type": "audio/mpeg",
             "Transfer-Encoding": "chunked",
             "Cache-Control": "no-cache",
           });
@@ -669,7 +669,7 @@ function workspaceEndpoints(app) {
           await TTSProvider.ttsStream(text, response);
           response.end();
         } else {
-          // Fallback to non-streaming
+          // Fallback to non-streaming (WAV)
           const buffer = await TTSProvider.ttsBuffer(text);
           if (buffer === null) return response.sendStatus(204).end();
 

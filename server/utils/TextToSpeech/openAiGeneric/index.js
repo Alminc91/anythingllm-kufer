@@ -169,13 +169,16 @@ class GenericOpenAiTTS {
   }
 
   /**
-   * Streams TTS audio directly to a response object.
-   * Uses chunked transfer encoding for progressive playback.
+   * Streams TTS audio as MP3 to a response object.
+   * Converts WAV from TTS provider to MP3 on-the-fly using ffmpeg.
+   * Uses chunked transfer encoding for progressive playback with MediaSource API.
    * @param {string} textInput - The text to be converted to audio.
    * @param {import('express').Response} res - Express response object to stream to.
    * @returns {Promise<boolean>} True if streaming succeeded, false otherwise.
    */
   async ttsStream(textInput, res) {
+    const { spawn } = require('child_process');
+
     try {
       // Detect language (same logic as ttsBuffer)
       let lang = this.language;
@@ -210,7 +213,7 @@ class GenericOpenAiTTS {
       if (this.cfgWeight !== null) requestBody.cfg_weight = this.cfgWeight;
       if (this.exaggeration !== null) requestBody.exaggeration = this.exaggeration;
 
-      this.#log(`[Stream] Starting streaming request to ${this.endpoint}/audio/speech`);
+      this.#log(`[Stream] Starting TTS request to ${this.endpoint}/audio/speech`);
       const startTime = Date.now();
 
       const response = await fetch(`${this.endpoint}/audio/speech`, {
@@ -228,26 +231,70 @@ class GenericOpenAiTTS {
         throw new Error(`TTS API error: ${response.status} ${response.statusText}`);
       }
 
-      // Pipe the response body directly to the Express response
-      const reader = response.body.getReader();
-      let totalBytes = 0;
+      // Spawn ffmpeg to convert WAV to MP3 on-the-fly
+      // -f wav: input format is WAV
+      // -i pipe:0: read from stdin
+      // -f mp3: output format is MP3
+      // -b:a 128k: 128kbps bitrate (good quality, reasonable size)
+      // pipe:1: write to stdout
+      const ffmpeg = spawn('ffmpeg', [
+        '-f', 'wav',
+        '-i', 'pipe:0',
+        '-f', 'mp3',
+        '-b:a', '128k',
+        '-y',
+        'pipe:1'
+      ], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
       let firstChunkTime = null;
+      let totalBytes = 0;
+
+      // Pipe ffmpeg stdout (MP3) to Express response
+      ffmpeg.stdout.on('data', (chunk) => {
+        if (firstChunkTime === null) {
+          firstChunkTime = Date.now();
+          this.#log(`[Stream] First MP3 chunk after ${firstChunkTime - startTime}ms`);
+        }
+        totalBytes += chunk.length;
+        res.write(chunk);
+      });
+
+      ffmpeg.stderr.on('data', (data) => {
+        // ffmpeg writes progress to stderr, ignore unless debugging
+        // this.#log(`[ffmpeg] ${data.toString()}`);
+      });
+
+      // Read WAV from TTS provider and pipe to ffmpeg
+      const reader = response.body.getReader();
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        if (firstChunkTime === null) {
-          firstChunkTime = Date.now();
-          this.#log(`[Stream] First chunk received after ${firstChunkTime - startTime}ms`);
-        }
-
-        totalBytes += value.length;
-        res.write(Buffer.from(value));
+        // Write WAV chunk to ffmpeg stdin
+        ffmpeg.stdin.write(Buffer.from(value));
       }
 
-      const totalTime = Date.now() - startTime;
-      this.#log(`[Stream] Completed: ${totalBytes} bytes in ${totalTime}ms (first chunk: ${firstChunkTime - startTime}ms)`);
+      // Close ffmpeg stdin to signal end of input
+      ffmpeg.stdin.end();
+
+      // Wait for ffmpeg to finish
+      await new Promise((resolve, reject) => {
+        ffmpeg.on('close', (code) => {
+          const totalTime = Date.now() - startTime;
+          if (code === 0) {
+            this.#log(`[Stream] Completed: ${totalBytes} bytes MP3 in ${totalTime}ms (first chunk: ${firstChunkTime ? firstChunkTime - startTime : 'N/A'}ms)`);
+            resolve();
+          } else {
+            this.#log(`[Stream] ffmpeg exited with code ${code}`);
+            reject(new Error(`ffmpeg exited with code ${code}`));
+          }
+        });
+        ffmpeg.on('error', reject);
+      });
+
       return true;
     } catch (e) {
       console.error('[OpenAiGenericTTS] Stream error:', e);
