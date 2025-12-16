@@ -213,22 +213,48 @@ class GenericOpenAiTTS {
       if (this.cfgWeight !== null) requestBody.cfg_weight = this.cfgWeight;
       if (this.exaggeration !== null) requestBody.exaggeration = this.exaggeration;
 
-      this.#log(`[Stream] Starting TTS request to ${this.endpoint}/audio/speech`);
+      // Try Chatterbox streaming endpoint first (real-time streaming)
+      // Falls back to standard OpenAI-compatible endpoint if not available
+      const streamEndpoint = this.endpoint.replace('/v1', '') + '/audio/speech/stream';
+      const standardEndpoint = `${this.endpoint}/audio/speech`;
+
+      this.#log(`[Stream] Trying streaming endpoint: ${streamEndpoint}`);
       const startTime = Date.now();
 
-      const response = await fetch(`${this.endpoint}/audio/speech`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(process.env.TTS_OPEN_AI_COMPATIBLE_KEY && {
-            'Authorization': `Bearer ${process.env.TTS_OPEN_AI_COMPATIBLE_KEY}`
-          })
-        },
-        body: JSON.stringify(requestBody),
-      });
+      let response;
+      try {
+        response = await fetch(streamEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.TTS_OPEN_AI_COMPATIBLE_KEY && {
+              'Authorization': `Bearer ${process.env.TTS_OPEN_AI_COMPATIBLE_KEY}`
+            })
+          },
+          body: JSON.stringify(requestBody),
+        });
 
-      if (!response.ok) {
-        throw new Error(`TTS API error: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Streaming endpoint returned ${response.status}`);
+        }
+        this.#log(`[Stream] Using real-time streaming endpoint`);
+      } catch (streamError) {
+        // Fallback to standard endpoint
+        this.#log(`[Stream] Streaming endpoint not available, using standard: ${standardEndpoint}`);
+        response = await fetch(standardEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.TTS_OPEN_AI_COMPATIBLE_KEY && {
+              'Authorization': `Bearer ${process.env.TTS_OPEN_AI_COMPATIBLE_KEY}`
+            })
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          throw new Error(`TTS API error: ${response.status} ${response.statusText}`);
+        }
       }
 
       // Spawn ffmpeg to convert WAV to MP3 on-the-fly
