@@ -257,12 +257,45 @@ class GenericOpenAiTTS {
         }
       }
 
-      // Spawn ffmpeg to convert WAV to MP3 on-the-fly
+      // Check Content-Type to determine if we need ffmpeg conversion
+      const contentType = response.headers.get('content-type') || '';
+      const isMP3 = contentType.includes('audio/mpeg') || contentType.includes('audio/mp3');
+      const isWAV = contentType.includes('audio/wav') || contentType.includes('audio/wave');
+
+      this.#log(`[Stream] Response Content-Type: ${contentType} (isMP3=${isMP3}, isWAV=${isWAV})`);
+
+      let firstChunkTime = null;
+      let totalBytes = 0;
+      const reader = response.body.getReader();
+
+      // If already MP3, stream directly without ffmpeg conversion
+      if (isMP3) {
+        this.#log(`[Stream] Provider returns MP3 - streaming directly without conversion`);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          if (firstChunkTime === null) {
+            firstChunkTime = Date.now();
+            this.#log(`[Stream] First MP3 chunk after ${firstChunkTime - startTime}ms`);
+          }
+          totalBytes += value.length;
+          res.write(Buffer.from(value));
+        }
+
+        const totalTime = Date.now() - startTime;
+        this.#log(`[Stream] Completed: ${totalBytes} bytes MP3 in ${totalTime}ms (first chunk: ${firstChunkTime ? firstChunkTime - startTime : 'N/A'}ms)`);
+        return true;
+      }
+
+      // WAV or unknown format: use ffmpeg to convert to MP3 on-the-fly
       // -f wav: input format is WAV
       // -i pipe:0: read from stdin
       // -f mp3: output format is MP3
       // -b:a 128k: 128kbps bitrate (good quality, reasonable size)
       // pipe:1: write to stdout
+      this.#log(`[Stream] Converting WAV to MP3 via ffmpeg`);
       const ffmpeg = spawn('ffmpeg', [
         '-f', 'wav',
         '-i', 'pipe:0',
@@ -273,9 +306,6 @@ class GenericOpenAiTTS {
       ], {
         stdio: ['pipe', 'pipe', 'pipe']
       });
-
-      let firstChunkTime = null;
-      let totalBytes = 0;
 
       // Pipe ffmpeg stdout (MP3) to Express response
       ffmpeg.stdout.on('data', (chunk) => {
@@ -292,14 +322,12 @@ class GenericOpenAiTTS {
         // this.#log(`[ffmpeg] ${data.toString()}`);
       });
 
-      // Read WAV from TTS provider and pipe to ffmpeg
-      const reader = response.body.getReader();
-
+      // Read from TTS provider and pipe to ffmpeg
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // Write WAV chunk to ffmpeg stdin
+        // Write chunk to ffmpeg stdin
         ffmpeg.stdin.write(Buffer.from(value));
       }
 
