@@ -259,6 +259,76 @@ function embeddedEndpoints(app) {
   );
 
   /**
+   * POST /embed/:embedId/audio/tts-stream
+   * Streams TTS audio as chunks for reduced latency
+   *
+   * Request body: { text: "Text to speak" }
+   * Response: Streaming audio (chunked transfer encoding)
+   */
+  app.post(
+    "/embed/:embedId/audio/tts-stream",
+    [validEmbedConfig],
+    async (request, response) => {
+      try {
+        const { text } = reqBody(request);
+
+        if (!text || typeof text !== "string" || text.trim().length === 0) {
+          return response.status(400).json({
+            success: false,
+            error: "No text provided for TTS.",
+          });
+        }
+
+        if (!isTTSConfigured()) {
+          return response.status(400).json({
+            success: false,
+            error: "TTS is not configured on this server.",
+          });
+        }
+
+        const TTSProvider = getTTSProvider();
+        if (!TTSProvider) {
+          return response.status(500).json({
+            success: false,
+            error: "Failed to initialize TTS provider.",
+          });
+        }
+
+        // Check if provider supports streaming
+        if (typeof TTSProvider.ttsStream === 'function') {
+          response.writeHead(200, {
+            "Content-Type": "audio/wav",
+            "Transfer-Encoding": "chunked",
+            "Cache-Control": "no-cache",
+          });
+
+          await TTSProvider.ttsStream(text, response);
+          response.end();
+        } else {
+          // Fallback to non-streaming
+          const audioBuffer = await TTSProvider.ttsBuffer(text);
+          if (!audioBuffer) {
+            return response.status(204).end();
+          }
+
+          response.writeHead(200, {
+            "Content-Type": "audio/wav",
+          });
+          response.end(audioBuffer);
+        }
+      } catch (e) {
+        console.error("[Embed TTS Stream]", e.message);
+        if (!response.headersSent) {
+          response.status(500).json({
+            success: false,
+            error: "TTS streaming failed.",
+          });
+        }
+      }
+    }
+  );
+
+  /**
    * POST /embed/:embedId/audio/stt
    * Transcribes audio to text using the configured STT provider
    *
