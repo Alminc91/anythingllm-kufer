@@ -1,4 +1,4 @@
-import { API_BASE, fullApiUrl } from "@/utils/constants";
+import { API_BASE, fullApiUrl, AUTH_TOKEN } from "@/utils/constants";
 import { baseHeaders, safeJsonParse } from "@/utils/request";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import WorkspaceThread from "@/models/workspaceThread";
@@ -353,6 +353,20 @@ const Workspace = {
       .catch((e) => {
         return null;
       });
+  },
+
+  /**
+   * Returns URL for streaming TTS audio (uses chunked transfer encoding)
+   * Includes auth token as query parameter for direct audio element playback
+   * @param {string} slug - workspace slug
+   * @param {number} chatId - chat message ID
+   * @returns {string} URL for streaming TTS audio
+   */
+  ttsStreamUrl: function (slug, chatId) {
+    const token = window.localStorage.getItem(AUTH_TOKEN);
+    const url = new URL(`${API_BASE}/workspace/${slug}/tts-stream/${chatId}`, window.location.origin);
+    if (token) url.searchParams.set('token', token);
+    return url.toString();
   },
   uploadPfp: async function (formData, slug) {
     return await fetch(`${API_BASE}/workspace/${slug}/upload-pfp`, {

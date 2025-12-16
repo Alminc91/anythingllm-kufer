@@ -28,8 +28,9 @@ async function validatedRequest(request, response, next) {
     return;
   }
 
+  // Accept token from header OR query parameter (for media streaming)
   const auth = request.header("Authorization");
-  const token = auth ? auth.split(" ")[1] : null;
+  const token = auth ? auth.split(" ")[1] : request.query.token || null;
 
   if (!token) {
     response.status(401).json({
@@ -69,8 +70,9 @@ async function validatedRequest(request, response, next) {
 }
 
 async function validateMultiUserRequest(request, response, next) {
+  // Accept token from header OR query parameter (for media streaming)
   const auth = request.header("Authorization");
-  const token = auth ? auth.split(" ")[1] : null;
+  const token = auth ? auth.split(" ")[1] : request.query.token || null;
 
   if (!token) {
     response.status(401).json({

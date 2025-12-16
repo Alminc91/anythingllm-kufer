@@ -27,14 +27,27 @@ class GenericOpenAiTTS {
     this.model = process.env.TTS_OPEN_AI_COMPATIBLE_MODEL ?? "tts-1";
     this.voice = process.env.TTS_OPEN_AI_COMPATIBLE_VOICE_MODEL ?? "alloy";
     this.language = process.env.TTS_LANGUAGE ?? "de";
+    this.endpoint = process.env.TTS_OPEN_AI_COMPATIBLE_ENDPOINT;
+
+    // Chatterbox-specific settings
+    // cfg_weight=0 disables voice cloning accent, enabling native language pronunciation
+    this.cfgWeight = process.env.TTS_CFG_WEIGHT !== undefined
+      ? parseFloat(process.env.TTS_CFG_WEIGHT)
+      : null;
+    this.exaggeration = process.env.TTS_EXAGGERATION !== undefined
+      ? parseFloat(process.env.TTS_EXAGGERATION)
+      : null;
 
     // Parse voice map for multilingual auto-detection
     // Format: TTS_VOICE_MAP={"de":"thorsten-low","en":"amy-low","tr":"turkish"}
     this.voiceMap = this.#parseVoiceMap();
 
     this.#log(
-      `Service (${process.env.TTS_OPEN_AI_COMPATIBLE_ENDPOINT}) with model: ${this.model} and default voice: ${this.voice}`
+      `Service (${this.endpoint}) with model: ${this.model} and default voice: ${this.voice}`
     );
+    if (this.cfgWeight !== null) {
+      this.#log(`Chatterbox cfg_weight: ${this.cfgWeight} (0 = native accent, 0.5 = clone accent)`);
+    }
     if (Object.keys(this.voiceMap).length > 0) {
       this.#log(`Voice map configured for languages: ${Object.keys(this.voiceMap).join(', ')}`);
     }
@@ -106,6 +119,43 @@ class GenericOpenAiTTS {
       const normalizedText = normalizeTextForTTS(textInput, lang);
       this.#log(`Normalized text (${lang}, ${normalizedText.length} chars): "${normalizedText.substring(0, 100)}..."`);
 
+      // Build request body
+      const requestBody = {
+        model: this.model,
+        voice: selectedVoice,
+        input: normalizedText,
+      };
+
+      // Add Chatterbox Multilingual parameters
+      // language: detected language code for native pronunciation
+      if (this.cfgWeight !== null || this.language === 'auto') {
+        requestBody.language = lang;  // Send detected language (de, en, fr, etc.)
+      }
+      if (this.cfgWeight !== null) requestBody.cfg_weight = this.cfgWeight;
+      if (this.exaggeration !== null) requestBody.exaggeration = this.exaggeration;
+
+      // Use direct fetch if we have extra parameters (OpenAI SDK doesn't support them)
+      if (this.cfgWeight !== null || this.exaggeration !== null) {
+        this.#log(`Using direct API call with cfg_weight=${this.cfgWeight}, exaggeration=${this.exaggeration}`);
+        const response = await fetch(`${this.endpoint}/audio/speech`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(process.env.TTS_OPEN_AI_COMPATIBLE_KEY && {
+              'Authorization': `Bearer ${process.env.TTS_OPEN_AI_COMPATIBLE_KEY}`
+            })
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          throw new Error(`TTS API error: ${response.status} ${response.statusText}`);
+        }
+
+        return Buffer.from(await response.arrayBuffer());
+      }
+
+      // Standard OpenAI SDK call
       const result = await this.openai.audio.speech.create({
         model: this.model,
         voice: selectedVoice,
@@ -116,6 +166,93 @@ class GenericOpenAiTTS {
       console.error(e);
     }
     return null;
+  }
+
+  /**
+   * Streams TTS audio directly to a response object.
+   * Uses chunked transfer encoding for progressive playback.
+   * @param {string} textInput - The text to be converted to audio.
+   * @param {import('express').Response} res - Express response object to stream to.
+   * @returns {Promise<boolean>} True if streaming succeeded, false otherwise.
+   */
+  async ttsStream(textInput, res) {
+    try {
+      // Detect language (same logic as ttsBuffer)
+      let lang = this.language;
+      const hasVoiceMap = Object.keys(this.voiceMap).length > 0;
+
+      if (this.language === 'auto' || hasVoiceMap) {
+        lang = detectLanguage(textInput, 'de');
+        this.#log(`[Stream] Auto-detected language: ${lang}`);
+      }
+
+      // Get voice for detected language
+      const selectedVoice = this.#getVoiceForLanguage(lang);
+      if (selectedVoice !== this.voice) {
+        this.#log(`[Stream] Using language-specific voice: ${selectedVoice} (for ${lang})`);
+      }
+
+      // Normalize text for TTS
+      const normalizedText = normalizeTextForTTS(textInput, lang);
+      this.#log(`[Stream] Normalized text (${lang}, ${normalizedText.length} chars): "${normalizedText.substring(0, 100)}..."`);
+
+      // Build request body
+      const requestBody = {
+        model: this.model,
+        voice: selectedVoice,
+        input: normalizedText,
+      };
+
+      // Add Chatterbox Multilingual parameters
+      if (this.cfgWeight !== null || this.language === 'auto') {
+        requestBody.language = lang;
+      }
+      if (this.cfgWeight !== null) requestBody.cfg_weight = this.cfgWeight;
+      if (this.exaggeration !== null) requestBody.exaggeration = this.exaggeration;
+
+      this.#log(`[Stream] Starting streaming request to ${this.endpoint}/audio/speech`);
+      const startTime = Date.now();
+
+      const response = await fetch(`${this.endpoint}/audio/speech`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(process.env.TTS_OPEN_AI_COMPATIBLE_KEY && {
+            'Authorization': `Bearer ${process.env.TTS_OPEN_AI_COMPATIBLE_KEY}`
+          })
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`TTS API error: ${response.status} ${response.statusText}`);
+      }
+
+      // Pipe the response body directly to the Express response
+      const reader = response.body.getReader();
+      let totalBytes = 0;
+      let firstChunkTime = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        if (firstChunkTime === null) {
+          firstChunkTime = Date.now();
+          this.#log(`[Stream] First chunk received after ${firstChunkTime - startTime}ms`);
+        }
+
+        totalBytes += value.length;
+        res.write(Buffer.from(value));
+      }
+
+      const totalTime = Date.now() - startTime;
+      this.#log(`[Stream] Completed: ${totalBytes} bytes in ${totalTime}ms (first chunk: ${firstChunkTime - startTime}ms)`);
+      return true;
+    } catch (e) {
+      console.error('[OpenAiGenericTTS] Stream error:', e);
+      return false;
+    }
   }
 }
 

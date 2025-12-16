@@ -20,14 +20,10 @@ export default function AsyncTTSMessage({ slug, chatId }) {
     try {
       if (!audioSrc) {
         setLoading(true);
-        Workspace.ttsMessage(slug, chatId)
-          .then((audioBlob) => {
-            if (!audioBlob)
-              throw new Error("Failed to load or play TTS message response.");
-            setAudioSrc(audioBlob);
-          })
-          .catch((e) => showToast(e.message, "error", { clear: true }))
-          .finally(() => setLoading(false));
+        // Use streaming URL - audio starts playing as chunks arrive
+        const streamUrl = Workspace.ttsStreamUrl(slug, chatId);
+        setAudioSrc(streamUrl);
+        // Note: loading state will be cleared when audio starts playing (canplay event)
       } else {
         playerRef.current.play();
       }
@@ -41,13 +37,29 @@ export default function AsyncTTSMessage({ slug, chatId }) {
   useEffect(() => {
     function setupPlayer() {
       if (!playerRef?.current) return;
+
       playerRef.current.addEventListener("play", () => {
         setSpeaking(true);
+        setLoading(false);
       });
 
       playerRef.current.addEventListener("pause", () => {
         playerRef.current.currentTime = 0;
         setSpeaking(false);
+      });
+
+      // Clear loading when audio can start playing (streaming)
+      playerRef.current.addEventListener("canplay", () => {
+        setLoading(false);
+      });
+
+      // Handle errors
+      playerRef.current.addEventListener("error", (e) => {
+        console.error("TTS audio error:", e);
+        setLoading(false);
+        setSpeaking(false);
+        setAudioSrc(null);
+        showToast("Failed to play TTS audio", "error", { clear: true });
       });
     }
     setupPlayer();

@@ -640,6 +640,53 @@ function workspaceEndpoints(app) {
     }
   );
 
+  // Streaming TTS endpoint - streams audio chunks as they're generated
+  app.get(
+    "/workspace/:slug/tts-stream/:chatId",
+    [validatedRequest, flexUserRoleValid([ROLES.all]), validWorkspaceSlug],
+    async function (request, response) {
+      try {
+        const { chatId } = request.params;
+        const workspace = response.locals.workspace;
+        const wsChat = await WorkspaceChats.get({
+          id: Number(chatId),
+          workspaceId: workspace.id,
+        });
+
+        const text = safeJsonParse(wsChat.response, null)?.text;
+        if (!text) return response.sendStatus(204).end();
+
+        const TTSProvider = getTTSProvider();
+
+        // Check if provider supports streaming
+        if (typeof TTSProvider.ttsStream === 'function') {
+          response.writeHead(200, {
+            "Content-Type": "audio/wav",
+            "Transfer-Encoding": "chunked",
+            "Cache-Control": "no-cache",
+          });
+
+          await TTSProvider.ttsStream(text, response);
+          response.end();
+        } else {
+          // Fallback to non-streaming
+          const buffer = await TTSProvider.ttsBuffer(text);
+          if (buffer === null) return response.sendStatus(204).end();
+
+          response.writeHead(200, {
+            "Content-Type": "audio/wav",
+          });
+          response.end(buffer);
+        }
+      } catch (error) {
+        console.error("Error processing the streaming TTS request:", error);
+        if (!response.headersSent) {
+          response.status(500).json({ message: "TTS streaming could not be completed" });
+        }
+      }
+    }
+  );
+
   app.get(
     "/workspace/:slug/pfp",
     [validatedRequest, flexUserRoleValid([ROLES.all])],

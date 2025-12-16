@@ -392,7 +392,10 @@ function formatDate(dateStr, lang = DEFAULT_LANG) {
     // Build date string with ordinal day for better TTS
     const ordinalDay = getOrdinalDay(day, lang);
 
-    return `${ordinalDay} ${monthName} ${year}`;
+    // Convert year to words for correct TTS pronunciation (2026 → zweitausendsechsundzwanzig)
+    const yearWord = numberToWords(parseInt(year), lang);
+
+    return `${ordinalDay} ${monthName} ${yearWord}`;
   } catch (error) {
     return dateStr;
   }
@@ -529,8 +532,9 @@ function expandAbbreviations(text, lang = DEFAULT_LANG) {
   for (const [abbrev, expansion] of sortedAbbrevs) {
     // Escape special regex characters in abbreviation
     const escaped = abbrev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Match abbreviation with word boundary or before digits (e.g., "Sa. 06")
-    const regex = new RegExp(`\\b${escaped}(?=\\s|\\d|$)`, 'g');
+    // Match abbreviation with word boundary or before digits, punctuation, parentheses
+    // Extended lookahead to handle "120 Std.)" and similar cases
+    const regex = new RegExp(`\\b${escaped}(?=\\s|\\d|[)\\]},;:!?]|$)`, 'g');
     text = text.replace(regex, expansion);
   }
 
@@ -554,22 +558,26 @@ function removeDisclaimers(text) {
 
 function normalizeCourseNumbers(text) {
   // Universal: Detect course code patterns and spell them out
-  // Pattern: 1-2 letters + 4-5 digits + optional letter (R7436, S4209C, AB1234)
-  // This works for ALL languages without needing to know the label word
+  // Supports multiple patterns:
+  // - Pattern A: 1-2 letters + 4-5 digits + optional letter (R7436, S4209C, AB1234)
+  // - Pattern B: 2 digits + 2-3 letters + 3 digits (26BWB018, 26WWB003 - German VHS format)
 
   const spellOut = (code) => {
     // Add space between each character for TTS to spell it out
     return code.split('').join(' ');
   };
 
-  // First: Add pause after "Kurs:" before course code to fix pronunciation
-  // "Kurs: S4209C" → "Kurs, S4209C" (comma helps TTS pronounce "Kurs" correctly)
-  text = text.replace(/\bKurs:\s*([A-Z]{1,2}\d{4,5}[A-Z]?)/gi, 'Kurs, $1');
+  // Combined pattern for course codes:
+  // Pattern A: [A-Z]{1,2}\d{4,5}[A-Z]? (e.g., R7436, S4209C)
+  // Pattern B: \d{2}[A-Z]{2,3}\d{3} (e.g., 26BWB018, 26WWB003)
+  const courseCodePattern = /(?:^|[\s:,])(\d{2}[A-Z]{2,3}\d{3}|[A-Z]{1,2}\d{4,5}[A-Z]?)(?=[\s,.\n]|$)/gi;
 
-  // Match course code patterns: R7436, S4209C, AB12345, etc.
-  // Must be preceded by word boundary or colon/space to avoid matching mid-word
-  // Pattern: 1-2 uppercase letters + 4-5 digits + optional uppercase letter
-  text = text.replace(/(?:^|[\s:,])([A-Z]{1,2}\d{4,5}[A-Z]?)(?=[\s,.\n]|$)/g, (match, code) => {
+  // First: Add pause after "Kurs:" before course code to fix pronunciation
+  // "Kurs: 26BWB018" → "Kurs, 26BWB018" (comma helps TTS pronounce "Kurs" correctly)
+  text = text.replace(/\bKurs:\s*(\d{2}[A-Z]{2,3}\d{3}|[A-Z]{1,2}\d{4,5}[A-Z]?)/gi, 'Kurs, $1');
+
+  // Match and spell out course codes
+  text = text.replace(courseCodePattern, (match, code) => {
     // Preserve the leading character (space, colon, or comma)
     const leadingChar = match[0] === code[0] ? '' : match[0];
     return `${leadingChar}${spellOut(code)}`;
