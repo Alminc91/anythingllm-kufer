@@ -77,6 +77,9 @@ export default function BillingAdminView({ workspace }) {
   const [cycleDurationMonths, setCycleDurationMonths] = useState(
     workspace?.cycleDurationMonths || ""
   );
+  const [messagesLimit, setMessagesLimit] = useState(
+    workspace?.messagesLimit ?? ""
+  );
 
   const nextReset = calculateNextReset(cycleStartDate, cycleDurationMonths);
 
@@ -258,11 +261,14 @@ export default function BillingAdminView({ workspace }) {
             min={0}
             step={1}
             onWheel={(e) => e.target.blur()}
-            defaultValue={workspace?.messagesLimit ?? ""}
+            value={messagesLimit}
             className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 mt-4"
             placeholder={t("Unbegrenzt")}
             autoComplete="off"
-            onChange={() => setHasChanges(true)}
+            onChange={(e) => {
+              setMessagesLimit(e.target.value);
+              setHasChanges(true);
+            }}
           />
         </div>
 
