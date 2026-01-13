@@ -18,9 +18,9 @@ export default function BillingAdminView({ workspace }) {
   const [loadingUsage, setLoadingUsage] = useState(true);
   const formEl = useRef(null);
 
-  // Fetch current usage data
+  // Fetch current usage data on mount
   useEffect(() => {
-    async function fetchUsageData() {
+    async function loadInitialUsageData() {
       try {
         const data = await Workspace.getUsageInfo(workspace.slug);
         setUsageData(data);
@@ -29,7 +29,7 @@ export default function BillingAdminView({ workspace }) {
       }
       setLoadingUsage(false);
     }
-    fetchUsageData();
+    loadInitialUsageData();
   }, [workspace.slug]);
 
   // Format date for input (YYYY-MM-DD)
@@ -92,6 +92,16 @@ export default function BillingAdminView({ workspace }) {
     { value: 12, label: t("12 Monate (Jahr)") },
   ];
 
+  // Fetch usage data function (reusable)
+  const fetchUsageData = async () => {
+    try {
+      const data = await Workspace.getUsageInfo(workspace.slug);
+      setUsageData(data);
+    } catch (err) {
+      console.error("Failed to fetch usage data:", err);
+    }
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -106,6 +116,8 @@ export default function BillingAdminView({ workspace }) {
     if (updatedWorkspace) {
       showToast("Abrechnungseinstellungen aktualisiert!", "success", { clear: true });
       setHasChanges(false);
+      // Reload usage data to reflect new limits
+      await fetchUsageData();
     } else {
       showToast(`Fehler: ${message}`, "error", { clear: true });
     }
