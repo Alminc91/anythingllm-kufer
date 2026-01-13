@@ -359,8 +359,8 @@ export default function BillingAdminView({ workspace }) {
         </div>
 
         {/* Info Box */}
-        <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
-          <p className="text-sm text-blue-300">
+        <div className="p-4 bg-blue-500/15 rounded-lg border border-blue-500/30">
+          <p className="text-sm text-blue-400">
             <strong>{t("Hinweis:")}</strong>{" "}
             {t("Bei einem Upgrade kann das Startdatum auf das aktuelle Datum gesetzt werden, um den Zyklus sofort zurückzusetzen. Das Kontingent beginnt dann neu zu zählen.")}
           </p>
