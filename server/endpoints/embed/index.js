@@ -296,13 +296,17 @@ function embeddedEndpoints(app) {
 
         // Check if provider supports streaming
         if (typeof TTSProvider.ttsStream === 'function') {
+          // Get requested format from query param (mp3 default, webm for Firefox)
+          const format = request.query.format === 'webm' ? 'webm' : 'mp3';
+          const contentType = format === 'webm' ? 'audio/webm' : 'audio/mpeg';
+
           response.writeHead(200, {
-            "Content-Type": "audio/mpeg",
+            "Content-Type": contentType,
             "Transfer-Encoding": "chunked",
             "Cache-Control": "no-cache",
           });
 
-          await TTSProvider.ttsStream(text, response);
+          await TTSProvider.ttsStream(text, response, format);
           response.end();
         } else {
           // Fallback to non-streaming

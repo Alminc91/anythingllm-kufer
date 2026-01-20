@@ -169,14 +169,15 @@ class GenericOpenAiTTS {
   }
 
   /**
-   * Streams TTS audio as MP3 to a response object.
-   * Converts WAV from TTS provider to MP3 on-the-fly using ffmpeg.
+   * Streams TTS audio to a response object.
+   * Converts WAV from TTS provider to MP3 or WebM/Opus on-the-fly using ffmpeg.
    * Uses chunked transfer encoding for progressive playback with MediaSource API.
    * @param {string} textInput - The text to be converted to audio.
    * @param {import('express').Response} res - Express response object to stream to.
+   * @param {string} format - Output format: 'mp3' (default) or 'webm' (for Firefox)
    * @returns {Promise<boolean>} True if streaming succeeded, false otherwise.
    */
-  async ttsStream(textInput, res) {
+  async ttsStream(textInput, res, format = 'mp3') {
     const { spawn } = require('child_process');
 
     try {
@@ -289,29 +290,22 @@ class GenericOpenAiTTS {
         return true;
       }
 
-      // WAV or unknown format: use ffmpeg to convert to MP3 on-the-fly
-      // -f wav: input format is WAV
-      // -i pipe:0: read from stdin
-      // -f mp3: output format is MP3
-      // -b:a 128k: 128kbps bitrate (good quality, reasonable size)
-      // pipe:1: write to stdout
-      this.#log(`[Stream] Converting WAV to MP3 via ffmpeg`);
-      const ffmpeg = spawn('ffmpeg', [
-        '-f', 'wav',
-        '-i', 'pipe:0',
-        '-f', 'mp3',
-        '-b:a', '128k',
-        '-y',
-        'pipe:1'
-      ], {
+      // WAV or unknown format: use ffmpeg to convert on-the-fly
+      // Supports MP3 (Chrome/Edge/Brave) and WebM/Opus (Firefox)
+      const ffmpegArgs = format === 'webm'
+        ? ['-f', 'wav', '-i', 'pipe:0', '-c:a', 'libopus', '-b:a', '96k', '-f', 'webm', '-y', 'pipe:1']
+        : ['-f', 'wav', '-i', 'pipe:0', '-f', 'mp3', '-b:a', '128k', '-y', 'pipe:1'];
+
+      this.#log(`[Stream] Converting WAV to ${format.toUpperCase()} via ffmpeg`);
+      const ffmpeg = spawn('ffmpeg', ffmpegArgs, {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
-      // Pipe ffmpeg stdout (MP3) to Express response
+      // Pipe ffmpeg stdout to Express response
       ffmpeg.stdout.on('data', (chunk) => {
         if (firstChunkTime === null) {
           firstChunkTime = Date.now();
-          this.#log(`[Stream] First MP3 chunk after ${firstChunkTime - startTime}ms`);
+          this.#log(`[Stream] First ${format.toUpperCase()} chunk after ${firstChunkTime - startTime}ms`);
         }
         totalBytes += chunk.length;
         res.write(chunk);
@@ -339,7 +333,7 @@ class GenericOpenAiTTS {
         ffmpeg.on('close', (code) => {
           const totalTime = Date.now() - startTime;
           if (code === 0) {
-            this.#log(`[Stream] Completed: ${totalBytes} bytes MP3 in ${totalTime}ms (first chunk: ${firstChunkTime ? firstChunkTime - startTime : 'N/A'}ms)`);
+            this.#log(`[Stream] Completed: ${totalBytes} bytes ${format.toUpperCase()} in ${totalTime}ms (first chunk: ${firstChunkTime ? firstChunkTime - startTime : 'N/A'}ms)`);
             resolve();
           } else {
             this.#log(`[Stream] ffmpeg exited with code ${code}`);

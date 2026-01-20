@@ -139,6 +139,7 @@ const MANUAL_ABBREVIATIONS = {
     'Str.': 'Straße', 'str.': 'straße', 'Nr.': 'Nummer', 'nr.': 'nummer',
     'ca.': 'circa', 'z.B.': 'zum Beispiel', 'z. B.': 'zum Beispiel',
     'd.h.': 'das heißt', 'd. h.': 'das heißt', 'u.a.': 'unter anderem',
+    'a. d.': 'an der', 'a.d.': 'an der', 'i. d.': 'in der', 'i.d.': 'in der',
     'bzw.': 'beziehungsweise', 'inkl.': 'inklusive', 'exkl.': 'exklusive',
     'zzgl.': 'zuzüglich', 'evtl.': 'eventuell', 'Tel.': 'Telefon',
     'max.': 'maximal', 'min.': 'minimal', 'Min.': 'Minuten',
@@ -433,23 +434,30 @@ function normalizeTextForTTS(text, language = 'auto') {
   // 1. Remove markdown formatting (universal)
   normalized = removeMarkdown(normalized);
 
-  // 2. Convert numbered lists to ordinals (1. → Erstens,)
+  // 2. Expand ordinals FIRST (1. Etage → erste Etage, 2. Februar → zweiter Februar)
+  // Must run before normalizeNumberedLists to avoid "1. Etage" becoming "Erstens, Etage"
+  normalized = expandOrdinals(normalized, lang);
+
+  // 3. Convert numbered lists to ordinals (1. → Erstens,)
   normalized = normalizeNumberedLists(normalized, lang);
 
-  // 3. Remove URLs (universal)
+  // 4. Remove URLs (universal)
   normalized = removeUrls(normalized);
 
-  // 3. Remove disclaimers (universal)
+  // 5. Remove disclaimers (universal)
   normalized = removeDisclaimers(normalized);
 
-  // 4. Spell out course numbers for accessibility (universal)
+  // 6. Spell out course numbers for accessibility (universal)
   normalized = normalizeCourseNumbers(normalized);
 
-  // 5. Expand abbreviations (Sa. → Samstag, Str. → Straße)
+  // 7. Expand abbreviations (Sa. → Samstag, Str. → Straße)
   normalized = expandAbbreviations(normalized, lang);
 
   // 6. Normalize dates (multilingual via Intl)
   normalized = normalizeDates(normalized, lang);
+
+  // 6b. Expand years to spoken form (2026 → zweitausendsechsundzwanzig)
+  normalized = expandYears(normalized, lang);
 
   // 7. Normalize times (multilingual via n2words)
   normalized = normalizeTimes(normalized, lang);
@@ -465,6 +473,9 @@ function normalizeTextForTTS(text, language = 'auto') {
 
   // 9b. Add pauses after course titles for better TTS flow
   normalized = addPausesAfterTitles(normalized);
+
+  // 9c. Add pauses between course listings
+  normalized = addCoursePauses(normalized, lang);
 
   // 10. Clean up separators (universal)
   normalized = cleanupSeparators(normalized);
@@ -537,6 +548,121 @@ function expandAbbreviations(text, lang = DEFAULT_LANG) {
     const regex = new RegExp(`\\b${escaped}(?=\\s|\\d|[)\\]},;:!?]|$)`, 'g');
     text = text.replace(regex, expansion);
   }
+
+  // Handle suffixes for German street names: Sonnenstr. → Sonnenstraße
+  if (lang === 'de') {
+    text = text.replace(/(\w+)str\./gi, '$1straße');
+    text = text.replace(/(\w+)pl\./gi, '$1platz');
+    text = text.replace(/(\w+)weg\./gi, '$1weg');
+  }
+
+  return text;
+}
+
+/**
+ * Expand ordinal numbers to spoken form for better TTS pronunciation
+ * "1. Etage" → "erste Etage", "2. Februar" → "zweiter Februar"
+ */
+function expandOrdinals(text, lang = DEFAULT_LANG) {
+  if (lang !== 'de') return text; // Only German for now
+
+  // German ordinal words (masculine/feminine varies by context)
+  const ordinalsMasculine = {
+    1: 'erster', 2: 'zweiter', 3: 'dritter', 4: 'vierter', 5: 'fünfter',
+    6: 'sechster', 7: 'siebter', 8: 'achter', 9: 'neunter', 10: 'zehnter',
+    11: 'elfter', 12: 'zwölfter', 13: 'dreizehnter', 14: 'vierzehnter',
+    15: 'fünfzehnter', 16: 'sechzehnter', 17: 'siebzehnter', 18: 'achtzehnter',
+    19: 'neunzehnter', 20: 'zwanzigster', 21: 'einundzwanzigster',
+    22: 'zweiundzwanzigster', 23: 'dreiundzwanzigster', 24: 'vierundzwanzigster',
+    25: 'fünfundzwanzigster', 26: 'sechsundzwanzigster', 27: 'siebenundzwanzigster',
+    28: 'achtundzwanzigster', 29: 'neunundzwanzigster', 30: 'dreißigster', 31: 'einunddreißigster',
+  };
+
+  const ordinalsFeminine = {
+    1: 'erste', 2: 'zweite', 3: 'dritte', 4: 'vierte', 5: 'fünfte',
+    6: 'sechste', 7: 'siebte', 8: 'achte', 9: 'neunte', 10: 'zehnte',
+    11: 'elfte', 12: 'zwölfte', 13: 'dreizehnte', 14: 'vierzehnte',
+    15: 'fünfzehnte', 16: 'sechzehnte', 17: 'siebzehnte', 18: 'achtzehnte',
+    19: 'neunzehnte', 20: 'zwanzigste', 21: 'einundzwanzigste',
+    22: 'zweiundzwanzigste', 23: 'dreiundzwanzigste', 24: 'vierundzwanzigste',
+    25: 'fünfundzwanzigste', 26: 'sechsundzwanzigste', 27: 'siebenundzwanzigste',
+    28: 'achtundzwanzigste', 29: 'neunundzwanzigste', 30: 'dreißigste', 31: 'einunddreißigste',
+  };
+
+  // Words that take feminine ordinals (die Etage, die Klasse, die Runde, die Woche)
+  const feminineWords = ['Etage', 'Klasse', 'Runde', 'Woche', 'Stunde', 'Minute', 'Hälfte', 'Reihe'];
+
+  // Words that take masculine ordinals (der Stock, der Februar, der Tag, der Platz)
+  const masculineWords = [
+    'Stock', 'Platz', 'Rang', 'Tag', 'Versuch', 'Gang', 'Preis', 'Schritt',
+    // All months are masculine in German
+    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+  ];
+
+  // Build regex patterns
+  const femininePattern = feminineWords.join('|');
+  const masculinePattern = masculineWords.join('|');
+
+  // Replace "1. Etage" → "erste Etage" (feminine)
+  text = text.replace(
+    new RegExp(`(\\d{1,2})\\.\\s*(${femininePattern})`, 'gi'),
+    (match, num, word) => {
+      const n = parseInt(num);
+      const ordinal = ordinalsFeminine[n] || `${n}.`;
+      return `${ordinal} ${word}`;
+    }
+  );
+
+  // Replace "2. Februar" → "zweiter Februar" (masculine)
+  text = text.replace(
+    new RegExp(`(\\d{1,2})\\.\\s*(${masculinePattern})`, 'gi'),
+    (match, num, word) => {
+      const n = parseInt(num);
+      const ordinal = ordinalsMasculine[n] || `${n}.`;
+      return `${ordinal} ${word}`;
+    }
+  );
+
+  return text;
+}
+
+/**
+ * Expand years to spoken form for better TTS pronunciation
+ * 2026 → "zweitausendsechsundzwanzig" (German)
+ */
+function expandYears(text, lang = DEFAULT_LANG) {
+  if (lang !== 'de') return text; // Only German for now
+
+  const yearWords = {
+    2024: 'zweitausendvierundzwanzig',
+    2025: 'zweitausendfünfundzwanzig',
+    2026: 'zweitausendsechsundzwanzig',
+    2027: 'zweitausendsiebenundzwanzig',
+    2028: 'zweitausendachtundzwanzig',
+    2029: 'zweitausendneunundzwanzig',
+    2030: 'zweitausenddreißig',
+  };
+
+  // Match years in date context (after month names or in DD.MM.YYYY patterns)
+  for (const [year, word] of Object.entries(yearWords)) {
+    // Replace year when it appears after month names or in date patterns
+    const regex = new RegExp(`(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\\s+${year}\\b`, 'gi');
+    text = text.replace(regex, `$1 ${word}`);
+  }
+
+  return text;
+}
+
+/**
+ * Add pauses between course listings for better TTS rhythm
+ */
+function addCoursePauses(text, lang = DEFAULT_LANG) {
+  if (lang !== 'de') return text;
+
+  // Add pause (period + space) after "Status: ..." before next course
+  text = text.replace(/(Status:\s*(?:Plätze frei|Ausgebucht|Warteliste|Є місця|Можна записатися)[^.]*?)(\s+)(Zweitens|Drittens|Viertens|Fünftens|Sechstens|Siebentens|Achtens|Neuntens|Zehntens)/gi,
+    '$1. $3');
 
   return text;
 }
