@@ -6,6 +6,7 @@ import paths from "@/utils/paths";
 import Embed from "@/models/embed";
 import MarkdownRenderer from "../MarkdownRenderer";
 import { safeJsonParse } from "@/utils/request";
+import { formatDateTimeDE } from "@/utils/directories";
 
 export default function ChatRow({ chat, onDelete, isReadOnly = false }) {
   const {
@@ -68,7 +69,7 @@ export default function ChatRow({ chat, onDelete, isReadOnly = false }) {
         >
           {truncate(safeJsonParse(chat.response, {})?.text, 40)}
         </td>
-        <td className="px-6">{chat.createdAt}</td>
+        <td className="px-6">{formatDateTimeDE(chat.createdAt)}</td>
         <td className="px-6 flex items-center gap-x-6 h-full mt-1">
           {!isReadOnly && (
             <button

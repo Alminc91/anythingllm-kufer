@@ -2,6 +2,16 @@
 
 Alle wichtigen Änderungen am AnythingLLM Server werden hier dokumentiert.
 
+## [2.8.2] - 2025-01-30
+
+### Verbessert
+- **📅 Einheitliche deutsche Datumsformatierung**: Alle Zeitstempel werden jetzt im Format "DD.MM.YYYY, HH:MM:SS Uhr" angezeigt
+  - Neue zentrale Funktion `formatDateTimeDE()` in `utils/directories.js`
+  - Angewendet auf: Instance Workspaces, Users, Invitations, API Keys, Chats, Embed Chat History
+  - Vorher: `2025-04-23T12:30:57.634Z` → Nachher: `23.04.2025, 12:30:57 Uhr`
+
+---
+
 ## [2.8.1] - 2025-12-13
 
 ### Verbessert

@@ -4,6 +4,7 @@ import showToast from "@/utils/toast";
 import { Trash } from "@phosphor-icons/react";
 import { userFromStorage } from "@/utils/request";
 import System from "@/models/system";
+import { formatDateTimeDE } from "@/utils/directories";
 
 export default function ApiKeyRow({ apiKey, removeApiKey }) {
   const [copied, setCopied] = useState(false);
@@ -46,7 +47,7 @@ export default function ApiKeyRow({ apiKey, removeApiKey }) {
           {apiKey.secret}
         </td>
         <td className="px-6 text-left">{apiKey.createdBy?.username || "--"}</td>
-        <td className="px-6">{apiKey.createdAt}</td>
+        <td className="px-6">{formatDateTimeDE(apiKey.createdAt)}</td>
         <td className="px-6 flex items-center gap-x-6 h-full mt-1">
           <button
             onClick={copyApiKey}
