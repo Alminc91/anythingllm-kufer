@@ -28,6 +28,27 @@ async function streamChatWithForEmbed(
     embed.workspace.openAiTemp = parseFloat(temperatureOverride);
 
   const uuid = uuidv4();
+
+  // Check workspace billing limit BEFORE making LLM calls (saves costs)
+  if (
+    embed.workspace.messagesLimit !== null &&
+    embed.workspace.messagesLimit !== undefined
+  ) {
+    const { checkWorkspaceMessagesLimit } = require("../helpers");
+    const { limitReached } = await checkWorkspaceMessagesLimit(
+      embed.workspace,
+      response,
+      {
+        isStreaming: true,
+        writeResponseChunk,
+        attachments: [],
+        uuid,
+        language: "de",
+      }
+    );
+    if (limitReached) return;
+  }
+
   const LLMConnector = getLLMProvider({
     provider: embed?.workspace?.chatProvider,
     model: chatModel ?? embed.workspace?.chatModel,

@@ -194,6 +194,30 @@ const EmbedChats = {
       return 0;
     }
   },
+
+  countForWorkspaceInDateRange: async function (
+    workspaceId,
+    startDate,
+    endDate
+  ) {
+    try {
+      const count = await prisma.embed_chats.count({
+        where: {
+          embed_config: {
+            workspace_id: workspaceId,
+          },
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+      });
+      return count;
+    } catch (error) {
+      console.error(error.message);
+      return 0;
+    }
+  },
 };
 
 module.exports = { EmbedChats };

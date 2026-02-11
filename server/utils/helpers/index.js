@@ -492,20 +492,28 @@ function toChunks(arr, size) {
  */
 async function countMessagesInDateRange(workspace, startDate, endDate) {
   const { WorkspaceChats } = require("../../models/workspaceChats");
+  const { EmbedChats } = require("../../models/embedChats");
 
   // Set the end date to the end of the day
   const adjustedEndDate = new Date(endDate);
   adjustedEndDate.setHours(23, 59, 59, 999);
 
-  const messageCount = await WorkspaceChats.count({
-    workspaceId: workspace.id,
-    createdAt: {
-      gte: startDate,
-      lte: adjustedEndDate,
-    },
-  });
+  const [workspaceChatCount, embedChatCount] = await Promise.all([
+    WorkspaceChats.count({
+      workspaceId: workspace.id,
+      createdAt: {
+        gte: startDate,
+        lte: adjustedEndDate,
+      },
+    }),
+    EmbedChats.countForWorkspaceInDateRange(
+      workspace.id,
+      startDate,
+      adjustedEndDate
+    ),
+  ]);
 
-  return messageCount;
+  return workspaceChatCount + embedChatCount;
 }
 
 /**
