@@ -69,6 +69,7 @@ const TRANSLATIONS = {
     yes: "Ja",
     no: "Nein",
     search: "Suchen",
+    back: "Zurück",
     username_requirements:
       "Der Benutzername muss 2-32 Zeichen lang sein, mit einem Kleinbuchstaben beginnen und darf nur Kleinbuchstaben, Zahlen, Unterstriche, Bindestriche und Punkte enthalten.",
   },
@@ -629,6 +630,94 @@ const TRANSLATIONS = {
       active: "Aktive Domains",
       created: "Erstellt",
     },
+  },
+  "embed-widgets": {
+    widgets: "Widgets",
+    history: "Verlauf",
+  },
+  "embed-row": {
+    code: "Code",
+    disable: "Deaktivieren",
+    enable: "Aktivieren",
+    delete: "Löschen",
+    disabled: "Einbettung wurde deaktiviert.",
+    enabled: "Einbettung ist aktiv.",
+    deleted: "Einbettung wurde aus dem System gelöscht.",
+    "all-domains": "alle",
+    "confirm-disable":
+      "Möchten Sie diese Einbettung wirklich deaktivieren?\n\nNach der Deaktivierung wird der Chatbot auf Ihrer Webseite ausgeblendet.",
+    "confirm-delete":
+      "Möchten Sie diese Einbettung wirklich löschen?\n\nNach dem Löschen wird der Chatbot auf Ihrer Webseite nicht mehr funktionieren.\n\nDiese Aktion kann nicht rückgängig gemacht werden.",
+  },
+  "embed-modal": {
+    "update-title": "Einbettung aktualisieren",
+    "create-title": "Neue Einbettung für Workspace erstellen",
+    "update-success": "Einbettung erfolgreich aktualisiert.",
+    cancel: "Abbrechen",
+    "update-button": "Einbettung aktualisieren",
+    "create-button": "Einbettung erstellen",
+    workspace: {
+      label: "Workspace",
+      hint: "Dies ist der Workspace, auf dem Ihr Chatfenster basieren wird. Alle Standardeinstellungen werden vom Workspace übernommen, sofern sie nicht durch diese Konfiguration überschrieben werden.",
+    },
+    "chat-mode": {
+      label: "Erlaubte Chat-Methode",
+      hint: "Legen Sie fest, wie Ihr Chatbot arbeiten soll. Query bedeutet, dass er nur antwortet, wenn ein Dokument bei der Beantwortung der Anfrage hilft. Chat öffnet den Chat auch für allgemeine Fragen und kann völlig unabhängige Anfragen zu Ihrem Workspace beantworten.",
+      chat: "Chat: Auf alle Fragen antworten, unabhängig vom Kontext",
+      query:
+        "Query: Nur auf Chats antworten, die sich auf Dokumente im Workspace beziehen",
+    },
+    domains: {
+      label: "Anfragen von Domains einschränken",
+      hint: "Dieser Filter blockiert alle Anfragen, die von einer anderen Domain als der unten aufgeführten Liste kommen. Wenn Sie dies leer lassen, kann jeder Ihre Einbettung auf jeder Website verwenden.",
+      placeholder: "https://meineseite.de, https://anythingllm.com",
+    },
+    "max-chats-day": {
+      label: "Max. Chats pro Tag",
+      hint: "Begrenzen Sie die Anzahl der Chats, die dieser eingebettete Chat in einem 24-Stunden-Zeitraum verarbeiten kann. Null bedeutet unbegrenzt.",
+    },
+    "max-chats-session": {
+      label: "Max. Chats pro Sitzung",
+      hint: "Begrenzen Sie die Anzahl der Chats, die ein Sitzungsbenutzer mit dieser Einbettung in einem 24-Stunden-Zeitraum senden kann. Null bedeutet unbegrenzt.",
+    },
+    "message-limit": {
+      label: "Nachrichtenverlauf-Limit",
+      hint: "Die Anzahl der vorherigen Nachrichten, die in den Chat-Kontext aufgenommen werden sollen. Standard ist 20.",
+    },
+    "model-override": {
+      label: "Dynamische Modellnutzung aktivieren",
+      hint: "Erlauben Sie die Einstellung des bevorzugten LLM-Modells, um die Workspace-Standardeinstellung zu überschreiben.",
+    },
+    "temperature-override": {
+      label: "Dynamische LLM-Temperatur aktivieren",
+      hint: "Erlauben Sie die Einstellung der LLM-Temperatur, um die Workspace-Standardeinstellung zu überschreiben.",
+    },
+    "prompt-override": {
+      label: "Prompt-Überschreibung aktivieren",
+      hint: "Erlauben Sie die Einstellung des System-Prompts, um die Workspace-Standardeinstellung zu überschreiben.",
+    },
+    "script-info":
+      "Nach dem Erstellen einer Einbettung erhalten Sie einen Link, den Sie mit einem einfachen <script>-Tag auf Ihrer Website veröffentlichen können.",
+  },
+  "code-snippet-modal": {
+    title: "Einbettungscode kopieren",
+    close: "Schließen",
+    copied: "Snippet in Zwischenablage kopiert!",
+    "script-label": "HTML Script Tag Einbettungscode",
+    "script-hint":
+      "Lassen Sie Ihre Workspace-Chat-Einbettung wie einen Helpdesk-Chat in der Ecke Ihrer Website funktionieren.",
+    "view-options": "Alle Stil- und Konfigurationsoptionen anzeigen →",
+  },
+  "chat-row": {
+    delete: "Löschen",
+    "confirm-delete":
+      "Möchten Sie diesen Chat wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.",
+    "view-text": "Text anzeigen",
+    "session-id": "Sitzungs-ID:",
+    username: "Benutzername:",
+    "client-ip": "Client-IP-Adresse:",
+    "client-host": "Client-Host-URL:",
+    "view-thoughts": "Gedanken anzeigen",
   },
   "embed-chats": {
     title: "Eingebettete Chats",

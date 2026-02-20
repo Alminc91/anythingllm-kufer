@@ -9,9 +9,15 @@ import { nFormatter } from "@/utils/numbers";
 import EditEmbedModal from "./EditEmbedModal";
 import CodeSnippetModal from "./CodeSnippetModal";
 import moment from "moment";
+import "moment/locale/de";
 import { safeJsonParse } from "@/utils/request";
+import { useTranslation } from "react-i18next";
 
 export default function EmbedRow({ embed, isReadOnly = false, userRole = null }) {
+  const { t, i18n } = useTranslation();
+
+  // Set moment locale based on i18n language
+  moment.locale(i18n.language);
   const rowRef = useRef(null);
   const [enabled, setEnabled] = useState(Number(embed.enabled) === 1);
   const {
@@ -26,12 +32,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
   } = useModal();
 
   const handleSuspend = async () => {
-    if (
-      !window.confirm(
-        `Möchten Sie diese Einbettung wirklich deaktivieren?\n\nNach der Deaktivierung wird der Chatbot auf Ihrer Webseite ausgeblendet.`
-      )
-    )
-      return false;
+    if (!window.confirm(t("embed-row.confirm-disable"))) return false;
 
     const { success, error } = await Embed.updateEmbed(embed.id, {
       enabled: !enabled,
@@ -39,7 +40,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
     if (!success) showToast(error, "error", { clear: true });
     if (success) {
       showToast(
-        `Embed ${enabled ? "has been disabled" : "is active"}.`,
+        enabled ? t("embed-row.disabled") : t("embed-row.enabled"),
         "success",
         { clear: true }
       );
@@ -47,17 +48,12 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
     }
   };
   const handleDelete = async () => {
-    if (
-      !window.confirm(
-        `Möchten Sie diese Einbettung wirklich löschen?\n\nNach dem Löschen wird der Chatbot auf Ihrer Webseite nicht mehr funktionieren.\n\nDiese Aktion kann nicht rückgängig gemacht werden.`
-      )
-    )
-      return false;
+    if (!window.confirm(t("embed-row.confirm-delete"))) return false;
     const { success, error } = await Embed.deleteEmbed(embed.id);
     if (!success) showToast(error, "error", { clear: true });
     if (success) {
       rowRef?.current?.remove();
-      showToast("Embed deleted from system.", "success", { clear: true });
+      showToast(t("embed-row.deleted"), "success", { clear: true });
     }
   };
 
@@ -105,7 +101,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
                 className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-code-hover-bg"
               >
                 <span className="group-hover:text-theme-button-code-hover-text">
-                  Code
+                  {t("embed-row.code")}
                 </span>
               </button>
               <button
@@ -113,7 +109,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
                 className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-disable-hover-bg"
               >
                 <span className="group-hover:text-theme-button-disable-hover-text">
-                  {enabled ? "Disable" : "Enable"}
+                  {enabled ? t("embed-row.disable") : t("embed-row.enable")}
                 </span>
               </button>
               <button
@@ -121,7 +117,7 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
                 className="group text-xs font-medium text-theme-text-secondary px-2 py-1 rounded-lg hover:bg-theme-button-delete-hover-bg"
               >
                 <span className="group-hover:text-theme-button-delete-hover-text">
-                  Delete
+                  {t("embed-row.delete")}
                 </span>
               </button>
               <button
@@ -145,8 +141,9 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
 }
 
 function ActiveDomains({ domainList }) {
+  const { t } = useTranslation();
   const domains = safeJsonParse(domainList, []);
-  if (domains.length === 0) return <p>all</p>;
+  if (domains.length === 0) return <p>{t("embed-row.all-domains")}</p>;
   return (
     <div className="flex flex-col gap-y-2">
       {domains.map((domain, index) => {
