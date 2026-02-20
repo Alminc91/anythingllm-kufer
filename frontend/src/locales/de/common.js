@@ -424,6 +424,14 @@ const TRANSLATIONS = {
     description:
       "Dies sind alle aufgezeichneten Chats und Nachrichten, die von Benutzern gesendet wurden, geordnet nach ihrem Erstellungsdatum.",
     export: "Exportieren",
+    "clear-chats": "Chats löschen",
+    "confirm-clear":
+      "Möchten Sie wirklich alle Chats löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.",
+    "export-success": "Chats erfolgreich als {format} exportiert.",
+    "export-failed": "Export der Chats fehlgeschlagen.",
+    "cleared-all": "Alle Chats wurden gelöscht.",
+    "previous-page": "Vorherige Seite",
+    "next-page": "Nächste Seite",
     table: {
       id: "Id",
       by: "Gesendet von",
