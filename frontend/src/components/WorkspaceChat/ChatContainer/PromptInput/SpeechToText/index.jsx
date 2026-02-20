@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef, useState } from "react";
 import { Microphone } from "@phosphor-icons/react";
 import { Tooltip } from "react-tooltip";
-import _regeneratorRuntime from "regenerator-runtime";
+import "regenerator-runtime"; //required polyfill for speech recognition;
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
@@ -282,8 +282,8 @@ export default function SpeechToText({ sendCommand }) {
     >
       <Microphone
         weight="fill"
-        color={serverSTTAvailable ? "var(--theme-sidebar-footer-icon-fill)" : "var(--theme-sidebar-footer-icon-fill)"}
-        className={`w-[22px] h-[22px] pointer-events-none text-theme-text-primary ${
+        color="var(--theme-sidebar-footer-icon-fill)"
+        className={`w-[20px] h-[20px] pointer-events-none text-theme-text-primary ${
           isActive ? "animate-pulse-glow" : ""
         }`}
       />

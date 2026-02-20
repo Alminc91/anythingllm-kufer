@@ -9,6 +9,7 @@ import { nFormatter } from "@/utils/numbers";
 import EditEmbedModal from "./EditEmbedModal";
 import CodeSnippetModal from "./CodeSnippetModal";
 import moment from "moment";
+import { safeJsonParse } from "@/utils/request";
 
 export default function EmbedRow({ embed, isReadOnly = false, userRole = null }) {
   const rowRef = useRef(null);
@@ -144,21 +145,17 @@ export default function EmbedRow({ embed, isReadOnly = false, userRole = null })
 }
 
 function ActiveDomains({ domainList }) {
-  if (!domainList) return <p>all</p>;
-  try {
-    const domains = JSON.parse(domainList);
-    return (
-      <div className="flex flex-col gap-y-2">
-        {domains.map((domain, index) => {
-          return (
-            <p key={index} className="font-mono !font-normal">
-              {domain}
-            </p>
-          );
-        })}
-      </div>
-    );
-  } catch {
-    return <p>all</p>;
-  }
+  const domains = safeJsonParse(domainList, []);
+  if (domains.length === 0) return <p>all</p>;
+  return (
+    <div className="flex flex-col gap-y-2">
+      {domains.map((domain, index) => {
+        return (
+          <p key={index} className="font-mono !font-normal">
+            {domain}
+          </p>
+        );
+      })}
+    </div>
+  );
 }

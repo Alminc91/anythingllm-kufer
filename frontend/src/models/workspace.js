@@ -185,10 +185,8 @@ const Workspace = {
         }
       },
       async onmessage(msg) {
-        try {
-          const chatResult = JSON.parse(msg.data);
-          handleChat(chatResult);
-        } catch {}
+        const chatResult = safeJsonParse(msg.data, null);
+        if (chatResult) handleChat(chatResult);
       },
       onerror(err) {
         handleChat({
@@ -350,7 +348,7 @@ const Workspace = {
         throw new Error("Failed to fetch TTS.");
       })
       .then((blob) => (blob ? URL.createObjectURL(blob) : null))
-      .catch((e) => {
+      .catch(() => {
         return null;
       });
   },
@@ -395,8 +393,7 @@ const Workspace = {
         throw new Error("Failed to fetch pfp.");
       })
       .then((blob) => (blob ? URL.createObjectURL(blob) : null))
-      .catch((e) => {
-        // console.log(e);
+      .catch(() => {
         return null;
       });
   },

@@ -82,43 +82,44 @@
  * @returns { BaseVectorDatabaseProvider}
  */
 function getVectorDbClass(getExactly = null) {
-  const { LanceDb } = require("../vectorDbProviders/lance");
   const vectorSelection = getExactly ?? process.env.VECTOR_DB ?? "lancedb";
   switch (vectorSelection) {
     case "pinecone":
       const { Pinecone } = require("../vectorDbProviders/pinecone");
-      return Pinecone;
+      return new Pinecone();
     case "chroma":
       const { Chroma } = require("../vectorDbProviders/chroma");
-      return Chroma;
+      return new Chroma();
     case "chromacloud":
       const { ChromaCloud } = require("../vectorDbProviders/chromacloud");
-      return ChromaCloud;
+      return new ChromaCloud();
     case "lancedb":
-      return LanceDb;
+      const { LanceDb } = require("../vectorDbProviders/lance");
+      return new LanceDb();
     case "weaviate":
       const { Weaviate } = require("../vectorDbProviders/weaviate");
-      return Weaviate;
+      return new Weaviate();
     case "qdrant":
       const { QDrant } = require("../vectorDbProviders/qdrant");
-      return QDrant;
+      return new QDrant();
     case "milvus":
       const { Milvus } = require("../vectorDbProviders/milvus");
-      return Milvus;
+      return new Milvus();
     case "zilliz":
       const { Zilliz } = require("../vectorDbProviders/zilliz");
-      return Zilliz;
+      return new Zilliz();
     case "astra":
       const { AstraDB } = require("../vectorDbProviders/astra");
-      return AstraDB;
+      return new AstraDB();
     case "pgvector":
       const { PGVector } = require("../vectorDbProviders/pgvector");
-      return PGVector;
+      return new PGVector();
     default:
       console.error(
         `\x1b[31m[ENV ERROR]\x1b[0m No VECTOR_DB value found in environment! Falling back to LanceDB`
       );
-      return LanceDb;
+      const { LanceDb: DefaultLanceDb } = require("../vectorDbProviders/lance");
+      return new DefaultLanceDb();
   }
 }
 
@@ -225,6 +226,20 @@ function getLLMProvider({ provider = null, model = null } = {}) {
     case "zai":
       const { ZAiLLM } = require("../AiProviders/zai");
       return new ZAiLLM(embedder, model);
+    case "giteeai":
+      const { GiteeAILLM } = require("../AiProviders/giteeai");
+      return new GiteeAILLM(embedder, model);
+    case "docker-model-runner":
+      const {
+        DockerModelRunnerLLM,
+      } = require("../AiProviders/dockerModelRunner");
+      return new DockerModelRunnerLLM(embedder, model);
+    case "privatemode":
+      const { PrivatemodeLLM } = require("../AiProviders/privatemode");
+      return new PrivatemodeLLM(embedder, model);
+    case "sambanova":
+      const { SambaNovaLLM } = require("../AiProviders/sambanova");
+      return new SambaNovaLLM(embedder, model);
     default:
       throw new Error(
         `ENV: No valid LLM_PROVIDER value found in environment! Using ${process.env.LLM_PROVIDER}`
@@ -279,6 +294,9 @@ function getEmbeddingEngineSelection() {
     case "gemini":
       const { GeminiEmbedder } = require("../EmbeddingEngines/gemini");
       return new GeminiEmbedder();
+    case "openrouter":
+      const { OpenRouterEmbedder } = require("../EmbeddingEngines/openRouter");
+      return new OpenRouterEmbedder();
     default:
       return new NativeEmbedder();
   }
@@ -384,6 +402,20 @@ function getLLMProviderClass({ provider = null } = {}) {
     case "zai":
       const { ZAiLLM } = require("../AiProviders/zai");
       return ZAiLLM;
+    case "giteeai":
+      const { GiteeAILLM } = require("../AiProviders/giteeai");
+      return GiteeAILLM;
+    case "docker-model-runner":
+      const {
+        DockerModelRunnerLLM,
+      } = require("../AiProviders/dockerModelRunner");
+      return DockerModelRunnerLLM;
+    case "privatemode":
+      const { PrivateModeLLM } = require("../AiProviders/privatemode");
+      return PrivateModeLLM;
+    case "sambanova":
+      const { SambaNovaLLM } = require("../AiProviders/sambanova");
+      return SambaNovaLLM;
     default:
       return null;
   }
@@ -458,6 +490,14 @@ function getBaseLLMProviderModel({ provider = null } = {}) {
       return process.env.FOUNDRY_MODEL_PREF;
     case "zai":
       return process.env.ZAI_MODEL_PREF;
+    case "giteeai":
+      return process.env.GITEE_AI_MODEL_PREF;
+    case "docker-model-runner":
+      return process.env.DOCKER_MODEL_RUNNER_LLM_MODEL_PREF;
+    case "privatemode":
+      return process.env.PRIVATEMODE_LLM_MODEL_PREF;
+    case "sambanova":
+      return process.env.SAMBANOVA_LLM_MODEL_PREF;
     default:
       return null;
   }
@@ -792,6 +832,30 @@ Days Remaining: ${cycleInfo.daysRemaining}` : ''}
   return result;
 }
 
+function humanFileSize(bytes, si = false, dp = 1) {
+  const thresh = si ? 1000 : 1024;
+
+  if (Math.abs(bytes) < thresh) {
+    return bytes + " B";
+  }
+
+  const units = si
+    ? ["kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+    : ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB"];
+  let u = -1;
+  const r = 10 ** dp;
+
+  do {
+    bytes /= thresh;
+    ++u;
+  } while (
+    Math.round(Math.abs(bytes) * r) / r >= thresh &&
+    u < units.length - 1
+  );
+
+  return bytes.toFixed(dp) + " " + units[u];
+}
+
 module.exports = {
   getEmbeddingEngineSelection,
   maximumChunkLength,
@@ -806,4 +870,5 @@ module.exports = {
   getMessageLimitErrorText,
   getCyclePeriodText,
   checkWorkspaceMessagesLimit,
+  humanFileSize,
 };

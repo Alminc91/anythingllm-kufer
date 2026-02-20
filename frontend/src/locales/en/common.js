@@ -22,8 +22,6 @@ const TRANSLATIONS = {
         "It's important to save this password because there is no recovery method.",
 
       adminUsername: "Admin account username",
-      adminUsernameReq:
-        "Username must be at least 6 characters long and only contain lowercase letters, numbers, underscores, and hyphens with no spaces.",
       adminPassword: "Admin account password",
       adminPasswordReq: "Passwords must be at least 8 characters.",
       teamHint:
@@ -58,7 +56,7 @@ const TRANSLATIONS = {
     },
   },
   common: {
-    "workspaces-name": "Workspaces Name",
+    "workspaces-name": "Workspace Name",
     error: "error",
     success: "success",
     user: "User",
@@ -71,6 +69,8 @@ const TRANSLATIONS = {
     yes: "Yes",
     no: "No",
     search: "Search",
+    username_requirements:
+      "Username must be 2-32 characters, start with a lowercase letter, and only contain lowercase letters, numbers, underscores, hyphens, and periods.",
   },
   home: {
     welcome: "Welcome",
@@ -112,12 +112,13 @@ const TRANSLATIONS = {
     "experimental-features": "Experimental Features",
     contact: "Contact Support",
     "browser-extension": "Browser Extension",
+    "mobile-app": "AnythingLLM Mobile",
   },
 
   // Page Definitions
   login: {
     "multi-user": {
-      welcome: "Welcome to",
+      welcome: "Welcome",
       "placeholder-username": "Username",
       "placeholder-password": "Password",
       login: "Login",
@@ -125,10 +126,8 @@ const TRANSLATIONS = {
       "forgot-pass": "Forgot password",
       reset: "Reset",
     },
-    "sign-in": {
-      start: "Sign in to your",
-      end: "account.",
-    },
+    "sign-in":
+      "Enter your username and password to access your {{appName}} instance.",
     "password-reset": {
       title: "Password Reset",
       description:
@@ -140,6 +139,7 @@ const TRANSLATIONS = {
   },
 
   "main-page": {
+    greeting: "How can I help you today?",
     noWorkspaceError: "Please create a workspace before starting a chat.",
     checklist: {
       title: "Getting Started",
@@ -178,6 +178,11 @@ const TRANSLATIONS = {
           action: "Browse",
         },
       },
+    },
+    quickActions: {
+      createAgent: "Create an Agent",
+      editWorkspace: "Edit Workspace",
+      uploadDocument: "Upload a Document",
     },
     quickLinks: {
       title: "Quick Links",
@@ -583,6 +588,8 @@ const TRANSLATIONS = {
         chat_deployment_name: "Chat Deployment Name",
         chat_model_token_limit: "Chat Model Token Limit",
         model_type: "Model Type",
+        model_type_tooltip:
+          "If your deployment uses a reasoning model (o1, o1-mini, o3-mini, etc.), set this to “Reasoning”. Otherwise, your chat requests may fail.",
         default: "Default",
         reasoning: "Reasoning",
       },
@@ -605,7 +612,7 @@ const TRANSLATIONS = {
   embedding: {
     title: "Embedding Preference",
     "desc-start":
-      "When using an LLM that does not natively support an embedding engine - you may need to additionally specify credentials to for embedding text.",
+      "When using an LLM that does not natively support an embedding engine - you may need to additionally specify credentials for embedding text.",
     "desc-end":
       "Embedding is the process of turning text into vectors. These credentials are required to turn your files and prompts into a format which AnythingLLM can use to process.",
     provider: {
@@ -713,7 +720,7 @@ const TRANSLATIONS = {
     title: "Privacy & Data-Handling",
     description:
       "This is your configuration for how connected third party providers and AnythingLLM handle your data.",
-    llm: "LLM Selection",
+    llm: "LLM Provider",
     embedding: "Embedding Preference",
     vector: "Vector Database",
     anonymous: "Anonymous Telemetry Enabled",
@@ -849,6 +856,9 @@ const TRANSLATIONS = {
       token_desc: "Access token for authentication",
       pat_token: "Confluence Personal Access Token",
       pat_token_explained: "Your Confluence personal access token.",
+      bypass_ssl: "Bypass SSL Certificate Validation",
+      bypass_ssl_explained:
+        "Enable this option to bypass SSL certificate validation for self-hosted confluence instances with self-signed certificate",
       task_explained:
         "Once complete, the page content will be available for embedding into workspaces in the document picker.",
     },
@@ -983,8 +993,6 @@ const TRANSLATIONS = {
     profile_picture: "Profile Picture",
     remove_profile_picture: "Remove Profile Picture",
     username: "Username",
-    username_description:
-      "Username must only contain lowercase letters, numbers, underscores, and hyphens with no spaces",
     new_password: "New Password",
     password_description: "Password must be at least 8 characters long",
     cancel: "Cancel",

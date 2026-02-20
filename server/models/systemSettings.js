@@ -10,6 +10,9 @@ const { MetaGenerator } = require("../utils/boot/MetaGenerator");
 const { PGVector } = require("../utils/vectorDbProviders/pgvector");
 const { NativeEmbedder } = require("../utils/EmbeddingEngines/native");
 const { getBaseLLMProviderModel } = require("../utils/helpers");
+const {
+  ConnectionStringParser,
+} = require("../utils/agents/aibitat/plugins/sql-agent/SQLConnectors/utils");
 
 function isNullOrNaN(value) {
   if (value === null) return true;
@@ -20,7 +23,7 @@ const SystemSettings = {
   /** A default system prompt that is used when no other system prompt is set or available to the function caller. */
   saneDefaultSystemPrompt:
     "Given the following conversation, relevant context, and a follow up question, reply with an answer to the current question the user is asking. Return only your response to the question given the above information following the users instructions as needed.",
-  protectedFields: ["multi_user_mode", "hub_api_key"],
+  protectedFields: ["multi_user_mode", "hub_api_key", "onboarding_complete"],
   publicFields: [
     "footer_data",
     "support_email",
@@ -230,8 +233,11 @@ const SystemSettings = {
         embeddingEngine === "native"
           ? NativeEmbedder._getEmbeddingModel()
           : process.env.EMBEDDING_MODEL_PREF,
+      EmbeddingOutputDimensions:
+        process.env.EMBEDDING_OUTPUT_DIMENSIONS || null,
       EmbeddingModelMaxChunkLength:
         process.env.EMBEDDING_MODEL_MAX_CHUNK_LENGTH,
+      OllamaEmbeddingBatchSize: process.env.OLLAMA_EMBEDDING_BATCH_SIZE || 1,
       VoyageAiApiKey: !!process.env.VOYAGEAI_API_KEY,
       GenericOpenAiEmbeddingApiKey:
         !!process.env.GENERIC_OPEN_AI_EMBEDDING_API_KEY,
@@ -418,6 +424,28 @@ const SystemSettings = {
     }
   },
 
+  isOnboardingComplete: async function () {
+    try {
+      const setting = await this.get({ label: "onboarding_complete" });
+      return setting?.value === "true";
+    } catch (error) {
+      console.error(error.message);
+      return false;
+    }
+  },
+
+  markOnboardingComplete: async function () {
+    try {
+      await this._updateSettings({ onboarding_complete: true });
+      const { Telemetry } = require("./telemetry");
+      await Telemetry.sendTelemetry("onboarding_complete");
+      return true;
+    } catch (error) {
+      console.error(error.message);
+      return false;
+    }
+  },
+
   currentLogoFilename: async function () {
     try {
       const setting = await this.get({ label: "logo_filename" });
@@ -457,11 +485,11 @@ const SystemSettings = {
 
       // Weaviate DB Keys
       WeaviateEndpoint: process.env.WEAVIATE_ENDPOINT,
-      WeaviateApiKey: process.env.WEAVIATE_API_KEY,
+      WeaviateApiKey: !!process.env.WEAVIATE_API_KEY,
 
       // QDrant DB Keys
       QdrantEndpoint: process.env.QDRANT_ENDPOINT,
-      QdrantApiKey: process.env.QDRANT_API_KEY,
+      QdrantApiKey: !!process.env.QDRANT_API_KEY,
 
       // Milvus DB Keys
       MilvusAddress: process.env.MILVUS_ADDRESS,
@@ -470,10 +498,10 @@ const SystemSettings = {
 
       // Zilliz DB Keys
       ZillizEndpoint: process.env.ZILLIZ_ENDPOINT,
-      ZillizApiToken: process.env.ZILLIZ_API_TOKEN,
+      ZillizApiToken: !!process.env.ZILLIZ_API_TOKEN,
 
       // AstraDB Keys
-      AstraDBApplicationToken: process?.env?.ASTRA_DB_APPLICATION_TOKEN,
+      AstraDBApplicationToken: !!process?.env?.ASTRA_DB_APPLICATION_TOKEN,
       AstraDBEndpoint: process?.env?.ASTRA_DB_ENDPOINT,
 
       // PGVector Keys
@@ -512,6 +540,7 @@ const SystemSettings = {
       LMStudioBasePath: process.env.LMSTUDIO_BASE_PATH,
       LMStudioTokenLimit: process.env.LMSTUDIO_MODEL_TOKEN_LIMIT || null,
       LMStudioModelPref: process.env.LMSTUDIO_MODEL_PREF,
+      LMStudioAuthToken: !!process.env.LMSTUDIO_AUTH_TOKEN,
 
       // LocalAI Keys
       LocalAiApiKey: !!process.env.LOCAL_AI_API_KEY,
@@ -525,7 +554,6 @@ const SystemSettings = {
       OllamaLLMModelPref: process.env.OLLAMA_MODEL_PREF,
       OllamaLLMTokenLimit: process.env.OLLAMA_MODEL_TOKEN_LIMIT || null,
       OllamaLLMKeepAliveSeconds: process.env.OLLAMA_KEEP_ALIVE_TIMEOUT ?? 300,
-      OllamaLLMPerformanceMode: process.env.OLLAMA_PERFORMANCE_MODE ?? "base",
 
       // Novita LLM Keys
       NovitaLLMApiKey: !!process.env.NOVITA_LLM_API_KEY,
@@ -648,21 +676,54 @@ const SystemSettings = {
       // Z.AI Keys
       ZAiApiKey: !!process.env.ZAI_API_KEY,
       ZAiModelPref: process.env.ZAI_MODEL_PREF,
+
+      // GiteeAI API Keys
+      GiteeAIApiKey: !!process.env.GITEE_AI_API_KEY,
+      GiteeAIModelPref: process.env.GITEE_AI_MODEL_PREF,
+      GiteeAITokenLimit: process.env.GITEE_AI_MODEL_TOKEN_LIMIT || 8192,
+
+      // Docker Model Runner Keys
+      DockerModelRunnerBasePath: process.env.DOCKER_MODEL_RUNNER_BASE_PATH,
+      DockerModelRunnerModelPref:
+        process.env.DOCKER_MODEL_RUNNER_LLM_MODEL_PREF,
+      DockerModelRunnerModelTokenLimit:
+        process.env.DOCKER_MODEL_RUNNER_LLM_MODEL_TOKEN_LIMIT || 8192,
+
+      // Privatemode Keys
+      PrivateModeBasePath: process.env.PRIVATEMODE_LLM_BASE_PATH,
+      PrivateModeModelPref: process.env.PRIVATEMODE_LLM_MODEL_PREF,
+
+      // SambaNova Keys
+      SambaNovaLLMApiKey: !!process.env.SAMBANOVA_LLM_API_KEY,
+      SambaNovaLLMModelPref: process.env.SAMBANOVA_LLM_MODEL_PREF,
     };
   },
 
-  // For special retrieval of a key setting that does not expose any credential information
-  brief: {
-    agent_sql_connections: async function () {
-      const setting = await SystemSettings.get({
-        label: "agent_sql_connections",
-      });
-      if (!setting) return [];
-      return safeJsonParse(setting.value, []).map((dbConfig) => {
-        const { connectionString, ...rest } = dbConfig;
-        return rest;
-      });
-    },
+  agent_sql_connections: async function () {
+    const setting = await SystemSettings.get({
+      label: "agent_sql_connections",
+    });
+    if (!setting) return [];
+
+    const connections = safeJsonParse(setting.value, []).map((conn) => {
+      let scheme = conn.engine;
+      if (scheme === "sql-server") scheme = "mssql";
+      if (scheme === "postgresql") scheme = "postgres";
+      const parser = new ConnectionStringParser({ scheme });
+
+      const parsed = parser.parse(conn.connectionString);
+      return {
+        ...conn,
+        username: parsed.username,
+        password: parsed.password,
+        host: parsed.hosts?.[0]?.host,
+        port: parsed.hosts?.[0]?.port,
+        database: parsed.endpoint,
+        scheme: parsed.scheme,
+      };
+    });
+
+    return connections;
   },
   getFeatureFlags: async function () {
     return {
@@ -712,42 +773,90 @@ const SystemSettings = {
   },
 };
 
+/**
+ * Merges SQL connection updates from the frontend with existing backend connections.
+ * Processes three types of actions: "remove", "update", and "add".
+ *
+ * @param {Array<Object>} existingConnections - Current connections stored in the database
+ * @param {Array<Object>} updates - Connection updates from frontend, each with an action property
+ * @returns {Array<Object>} - The merged connections array
+ */
 function mergeConnections(existingConnections = [], updates = []) {
-  let updatedConnections = [...existingConnections];
-  const existingDbIds = existingConnections.map((conn) => conn.database_id);
-
-  // First remove all 'action:remove' candidates from existing connections.
-  const toRemove = updates
-    .filter((conn) => conn.action === "remove")
-    .map((conn) => conn.database_id);
-  updatedConnections = updatedConnections.filter(
-    (conn) => !toRemove.includes(conn.database_id)
+  const connectionsMap = new Map(
+    existingConnections.map((conn) => [conn.database_id, conn])
   );
 
-  // Next add all 'action:add' candidates into the updatedConnections; We DO NOT validate the connection strings.
-  // but we do validate their database_id is unique.
-  updates
-    .filter((conn) => conn.action === "add")
-    .forEach((update) => {
-      if (!update.connectionString) return; // invalid connection string
+  for (const update of updates) {
+    const {
+      action,
+      database_id,
+      originalDatabaseId,
+      connectionString,
+      engine,
+    } = update;
 
-      // Remap name to be unique to entire set.
-      if (existingDbIds.includes(update.database_id)) {
-        update.database_id = slugify(
-          `${update.database_id}-${v4().slice(0, 4)}`
-        );
-      } else {
-        update.database_id = slugify(update.database_id);
+    switch (action) {
+      case "remove": {
+        connectionsMap.delete(database_id);
+        break;
+      }
+      case "update": {
+        if (!connectionString) continue;
+        const newId = slugify(database_id);
+
+        // Verify original connection exists
+        if (!connectionsMap.has(originalDatabaseId)) {
+          console.warn(
+            `[mergeConnections] Update skipped: Original connection "${originalDatabaseId}" not found`
+          );
+          break;
+        }
+
+        // Check for name conflict (excluding the one being updated)
+        if (newId !== originalDatabaseId && connectionsMap.has(newId)) {
+          console.warn(
+            `[mergeConnections] Update skipped: New name "${newId}" conflicts with existing connection`
+          );
+          break;
+        }
+
+        // Remove old and add updated connection
+        connectionsMap.delete(originalDatabaseId);
+        connectionsMap.set(newId, {
+          engine,
+          database_id: newId,
+          connectionString,
+        });
+        break;
       }
 
-      updatedConnections.push({
-        engine: update.engine,
-        database_id: update.database_id,
-        connectionString: update.connectionString,
-      });
-    });
+      case "add": {
+        if (!connectionString) continue;
+        const slugifiedId = slugify(database_id);
 
-  return updatedConnections;
+        // Skip if already exists
+        if (connectionsMap.has(slugifiedId)) {
+          console.warn(
+            `[mergeConnections] Add skipped: Connection "${slugifiedId}" already exists`
+          );
+          break;
+        }
+
+        connectionsMap.set(slugifiedId, {
+          engine,
+          database_id: slugifiedId,
+          connectionString,
+        });
+        break;
+      }
+
+      default: {
+        throw new Error("SQL connection update contains an invalid action.");
+      }
+    }
+  }
+
+  return Array.from(connectionsMap.values());
 }
 
 module.exports.SystemSettings = SystemSettings;

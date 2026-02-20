@@ -139,7 +139,7 @@ export default function SettingsSidebar() {
       <div>
         <Link
           to={paths.home()}
-          className="flex shrink-0 max-w-[55%] items-center justify-start mx-[38px] my-[18px]"
+          className="flex shrink-0 max-w-[55%] items-center justify-start mx-[20.5px] my-[18px]"
         >
           <img
             src={logo}
@@ -385,6 +385,12 @@ const SidebarOptions = ({ user = null, t }) => (
               href: paths.settings.browserExtension(),
               flex: true,
               roles: ["admin", "manager"],
+            },
+            {
+              btnText: t("settings.mobile-app"),
+              href: paths.settings.mobile(),
+              flex: true,
+              roles: ["admin"],
             },
           ]}
         />

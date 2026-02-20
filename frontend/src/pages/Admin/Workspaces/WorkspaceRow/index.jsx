@@ -5,7 +5,7 @@ import { LinkSimple, Trash } from "@phosphor-icons/react";
 import useUser from "@/hooks/useUser";
 import { formatDateTimeDE } from "@/utils/directories";
 
-export default function WorkspaceRow({ workspace, users }) {
+export default function WorkspaceRow({ workspace, users: _users }) {
   const rowRef = useRef(null);
   const { user } = useUser();
   // Only admin can delete workspaces (billing protection)

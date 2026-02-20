@@ -82,6 +82,26 @@ function systemEndpoints(app) {
     response.sendStatus(200).end();
   });
 
+  app.get("/onboarding", async (_, response) => {
+    try {
+      const results = await SystemSettings.isOnboardingComplete();
+      response.status(200).json({ onboardingComplete: results });
+    } catch (e) {
+      console.error(e.message, e);
+      response.sendStatus(500).end();
+    }
+  });
+
+  app.post("/onboarding", [validatedRequest], async (_, response) => {
+    try {
+      await SystemSettings.markOnboardingComplete();
+      response.sendStatus(200).end();
+    } catch (e) {
+      console.error(e.message, e);
+      response.sendStatus(500).end();
+    }
+  });
+
   app.get("/setup-complete", async (_, response) => {
     try {
       const results = await SystemSettings.currentSettings();
@@ -116,9 +136,55 @@ function systemEndpoints(app) {
     }
   );
 
+  /**
+   * Refreshes the user object from the session from a provided token.
+   * This does not refresh the token itself - if that is expired or invalid, the user will be logged out.
+   * This simply keeps the user object in sync with the database over the course of the session.
+   * @returns {Promise<{success: boolean, user: Object | null, message: string | null}>}
+   */
+  app.get(
+    "/system/refresh-user",
+    [validatedRequest],
+    async (request, response) => {
+      try {
+        if (!multiUserMode(response))
+          return response
+            .status(200)
+            .json({ success: true, user: null, message: null });
+
+        const user = await userFromSession(request, response);
+        if (!user)
+          return response.status(200).json({
+            success: false,
+            user: null,
+            message: "Session expired or invalid.",
+          });
+
+        if (user.suspended)
+          return response.status(200).json({
+            success: false,
+            user: null,
+            message: "User is suspended.",
+          });
+
+        return response.status(200).json({
+          success: true,
+          user: User.filterFields(user),
+          message: null,
+        });
+      } catch (e) {
+        return response.status(500).json({
+          success: false,
+          user: null,
+          message: e.message,
+        });
+      }
+    }
+  );
+
   app.post("/request-token", async (request, response) => {
     try {
-      const bcrypt = require("bcrypt");
+      const bcrypt = require("bcryptjs");
 
       if (await SystemSettings.isMultiUserMode()) {
         if (simpleSSOLoginDisabled()) {
@@ -1176,7 +1242,9 @@ function systemEndpoints(app) {
       }
 
       const updates = {};
-      if (username)
+      // If the username is being changed, validate it.
+      // Otherwise, do not attempt to validate it to allow existing users to keep their username if not changing it.
+      if (username !== sessionUser.username)
         updates.username = User.validations.username(String(username));
       if (password) updates.password = String(password);
       if (bio) updates.bio = String(bio);
@@ -1192,7 +1260,9 @@ function systemEndpoints(app) {
       response.status(200).json({ success, error });
     } catch (e) {
       console.error(e);
-      response.sendStatus(500).end();
+      response
+        .status(500)
+        .json({ success: false, error: e.message || "Internal server error" });
     }
   });
 

@@ -32,6 +32,32 @@ const System = {
       .then((res) => res.vectorCount)
       .catch(() => 0);
   },
+
+  /**
+   * Checks if the onboarding is complete.
+   * @returns {Promise<boolean>}
+   */
+  isOnboardingComplete: async function () {
+    return await fetch(`${API_BASE}/onboarding`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Could not find onboarding information.");
+        return res.json();
+      })
+      .then((res) => res.onboardingComplete)
+      .catch(() => false);
+  },
+  /**
+   * Marks the onboarding as complete.
+   * @returns {Promise<boolean>}
+   */
+  markOnboardingComplete: async function () {
+    return await fetch(`${API_BASE}/onboarding`, {
+      method: "POST",
+      headers: baseHeaders(),
+    })
+      .then((res) => res.ok)
+      .catch(() => false);
+  },
   keys: async function () {
     return await fetch(`${API_BASE}/setup-complete`)
       .then((res) => {
@@ -81,6 +107,22 @@ const System = {
       .then((res) => res)
       .catch((e) => {
         return { valid: false, message: e.message };
+      });
+  },
+  /**
+   * Refreshes the user object from the session.
+   * @returns {Promise<{success: boolean, user: Object | null, message: string | null}>}
+   */
+  refreshUser: () => {
+    return fetch(`${API_BASE}/system/refresh-user`, {
+      headers: baseHeaders(),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Could not refresh user.");
+        return res.json();
+      })
+      .catch((e) => {
+        return { success: false, user: null, message: e.message };
       });
   },
   recoverAccount: async function (username, recoveryCodes) {
@@ -415,12 +457,11 @@ const System = {
         throw new Error("Failed to fetch pfp.");
       })
       .then((blob) => (blob ? URL.createObjectURL(blob) : null))
-      .catch((e) => {
-        // console.log(e);
+      .catch(() => {
         return null;
       });
   },
-  removePfp: async function (id) {
+  removePfp: async function () {
     return await fetch(`${API_BASE}/system/remove-pfp`, {
       method: "DELETE",
       headers: baseHeaders(),
