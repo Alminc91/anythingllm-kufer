@@ -178,10 +178,13 @@ export default function ChatPromptSettings({
               <textarea
                 ref={promptRef}
                 autoFocus={true}
-                rows={5}
                 onFocus={(e) => {
+                  // Cursor ans Ende setzen (sinnvoll, da Klick-Position beim Wechsel verloren geht)
                   const length = e.target.value.length;
                   e.target.setSelectionRange(length, length);
+                  // Höhe an Inhalt anpassen
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.max(e.target.scrollHeight, 150)}px`;
                 }}
                 onBlur={(e) => {
                   setIsEditing(false);
@@ -190,6 +193,9 @@ export default function ChatPromptSettings({
                 onChange={(e) => {
                   setPrompt(e.target.value);
                   setHasChanges(true);
+                  // Dynamische Höhenanpassung beim Tippen
+                  e.target.style.height = "auto";
+                  e.target.style.height = `${Math.max(e.target.scrollHeight, 150)}px`;
                 }}
                 onPaste={(e) => {
                   setPrompt(e.target.value);
@@ -197,7 +203,7 @@ export default function ChatPromptSettings({
                 }}
                 style={{
                   resize: "vertical",
-                  overflowY: "scroll",
+                  overflowY: "auto",
                   minHeight: "150px",
                 }}
                 defaultValue={prompt}
@@ -208,7 +214,7 @@ export default function ChatPromptSettings({
                 onClick={() => setIsEditing(true)}
                 style={{
                   resize: "vertical",
-                  overflowY: "scroll",
+                  overflowY: "auto",
                   minHeight: "150px",
                 }}
                 className="border-none bg-theme-settings-input-bg text-white text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5 mt-2"
