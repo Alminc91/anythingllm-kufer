@@ -1,0 +1,249 @@
+import { useState, useEffect } from "react";
+import { CaretDown, CaretRight, ChatCircle, User, Copy } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import Embed from "@/models/embed";
+import { formatDateTimeDE } from "@/utils/directories";
+import showToast from "@/utils/toast";
+import MarkdownRenderer from "../EmbedChats/MarkdownRenderer";
+
+export default function ConversationList({ embedId, dateRange, getDateRange }) {
+  const { t } = useTranslation();
+  const [conversations, setConversations] = useState([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setOffset(0); // Reset offset when filters change
+  }, [embedId, dateRange]);
+
+  useEffect(() => {
+    if (!embedId) return;
+
+    async function loadConversations() {
+      setLoading(true);
+      const { startDate, endDate } = getDateRange(dateRange);
+      const { success, conversations: data, hasMore: more } =
+        await Embed.getConversations(embedId, offset, 20, startDate, endDate);
+
+      if (success) {
+        setConversations(data || []);
+        setHasMore(more);
+      } else {
+        showToast(t("embed-analytics.load-error"), "error");
+      }
+      setLoading(false);
+    }
+
+    loadConversations();
+  }, [embedId, dateRange, offset, getDateRange, t]);
+
+  const handlePrevious = () => setOffset(Math.max(0, offset - 20));
+  const handleNext = () => setOffset(offset + 20);
+
+  if (loading) {
+    return <div className="text-white">{t("common.loading")}</div>;
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <div className="text-white/60 text-center py-8">
+        {t("embed-analytics.no-conversations")}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h3 className="text-white text-xl mb-4">
+        {t("embed-analytics.conversations-title")} ({conversations.length})
+      </h3>
+
+      <div className="space-y-3">
+        {conversations.map((conv) => (
+          <ConversationRow
+            key={conv.session_id}
+            conversation={conv}
+            embedId={embedId}
+          />
+        ))}
+      </div>
+
+      {/* Pagination */}
+      {(offset > 0 || hasMore) && (
+        <div className="flex justify-center gap-4 mt-6">
+          <button
+            onClick={handlePrevious}
+            disabled={offset === 0}
+            className="px-4 py-2 bg-white/10 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
+          >
+            {t("common.previous")}
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={!hasMore}
+            className="px-4 py-2 bg-white/10 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/20 transition-all"
+          >
+            {t("common.next")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConversationRow({ conversation, embedId }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const [messages, setMessages] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleToggle = async () => {
+    if (!expanded && !messages) {
+      setLoading(true);
+      const { success, messages: data } = await Embed.getConversationDetails(
+        embedId,
+        conversation.session_id
+      );
+
+      if (success) {
+        setMessages(data || []);
+      } else {
+        showToast(t("embed-analytics.load-error"), "error");
+      }
+      setLoading(false);
+    }
+    setExpanded(!expanded);
+  };
+
+  const handleCopySessionId = (e) => {
+    e.stopPropagation(); // Prevent toggle when clicking copy
+    navigator.clipboard.writeText(conversation.session_id);
+    showToast(t("embed-analytics.session-copied"), "success");
+  };
+
+  // Format relative time
+  const getRelativeTime = (timestamp) => {
+    const diff = Date.now() - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+
+    if (minutes < 1) return "gerade eben";
+    if (minutes < 60) return `vor ${minutes} Min`;
+    if (hours < 24) return `vor ${hours} Std`;
+    return formatDateTimeDE(timestamp);
+  };
+
+  return (
+    <div className="border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-all">
+      {/* Header */}
+      <div
+        className="flex items-center justify-between p-4 cursor-pointer hover:bg-white/5 transition-all"
+        onClick={handleToggle}
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {expanded ? (
+            <CaretDown size={18} className="text-theme-text-secondary flex-shrink-0" />
+          ) : (
+            <CaretRight size={18} className="text-theme-text-secondary flex-shrink-0" />
+          )}
+          <ChatCircle size={20} className="text-theme-text-secondary flex-shrink-0" />
+
+          <div className="flex-1 min-w-0">
+            <h4 className="text-theme-text-primary text-sm font-semibold">
+              {t("embed-analytics.conversation-number", {
+                id: conversation.conversation_number,
+              })}
+            </h4>
+            <p className="text-theme-text-secondary text-xs">
+              Start: {formatDateTimeDE(conversation.started_at)} |{" "}
+              Letzte: {getRelativeTime(conversation.last_message_at)} |{" "}
+              {conversation.message_count} {t("embed-analytics.messages")}
+            </p>
+            {!expanded && (
+              <p className="text-theme-text-secondary opacity-60 text-xs mt-1 italic truncate">
+                &quot;{conversation.preview}&quot;
+              </p>
+            )}
+          </div>
+        </div>
+        {/* Session ID komplett sichtbar mit Copy-Button */}
+        <div className="flex items-center gap-2 flex-shrink-0 ml-4 bg-theme-settings-input-bg px-2 py-1 rounded border border-white/10 light:border-gray-300">
+          <span className="text-theme-text-secondary text-[10px] font-semibold uppercase">
+            Session:
+          </span>
+          <span className="text-theme-text-primary text-[10px] font-mono">
+            {conversation.session_id}
+          </span>
+          <button
+            onClick={handleCopySessionId}
+            className="text-theme-text-secondary hover:text-theme-text-primary transition-colors p-0.5 hover:bg-white/10 light:hover:bg-gray-200 rounded flex-shrink-0"
+            title="Session ID kopieren"
+          >
+            <Copy size={12} weight="bold" />
+          </button>
+        </div>
+      </div>
+
+      {/* Details */}
+      {expanded && (
+        <div className="border-t border-white/10 p-6 bg-transparent">
+          {loading ? (
+            <div className="text-white text-sm">{t("common.loading")}</div>
+          ) : messages ? (
+            <div className="space-y-5">
+              {messages.map((msg, idx) => (
+                <div key={msg.id}>
+                  {/* User Message - Blauer Kasten wie HTML-Statistik */}
+                  <div className="bg-blue-900/20 border-l-4 border-blue-400 p-4 rounded-lg mb-3 light:bg-blue-100 light:border-blue-600">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <User size={18} weight="fill" className="text-blue-400 light:text-blue-600" />
+                        <h5 className="text-blue-300 text-sm font-bold uppercase light:text-blue-700">
+                          {t("embed-analytics.request")}
+                        </h5>
+                      </div>
+                      <span className="text-blue-300/60 text-xs font-mono light:text-blue-600/70">
+                        {formatDateTimeDE(msg.createdAt)}
+                      </span>
+                    </div>
+                    <p className="text-theme-text-primary text-sm leading-relaxed whitespace-pre-wrap">
+                      {msg.prompt}
+                    </p>
+                  </div>
+
+                  {/* Bot Response - Grauer Kasten wie HTML-Statistik */}
+                  <div className="bg-gray-800/20 border-l-4 border-gray-500 p-4 rounded-lg light:bg-gray-100 light:border-gray-400">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ChatCircle size={18} weight="fill" className="text-gray-400 light:text-gray-600" />
+                      <h5 className="text-gray-300 text-sm font-bold uppercase light:text-gray-700">
+                        {t("embed-analytics.response")}
+                      </h5>
+                    </div>
+                    <div className="text-theme-text-primary text-sm leading-relaxed prose prose-sm max-w-none analytics-bot-response">
+                      <MarkdownRenderer
+                        content={(() => {
+                          try {
+                            const parsed = JSON.parse(msg.response);
+                            return parsed?.text || msg.response;
+                          } catch {
+                            return msg.response;
+                          }
+                        })()}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dickere Trennlinie zwischen Nachrichtenpaaren */}
+                  {idx < messages.length - 1 && (
+                    <div className="h-0.5 bg-white/20 my-5 light:bg-gray-300"></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}

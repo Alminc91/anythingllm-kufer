@@ -32,6 +32,34 @@ export default function EditEmbedModal({ embed, closeModal }) {
     setError(error);
   };
 
+  const handleClearChats = async () => {
+    const chatCount = embed._count.embed_chats;
+    if (chatCount === 0) {
+      showToast(t("embed-modal.no-chats"), "info", { clear: true });
+      return;
+    }
+
+    if (
+      !window.confirm(t("embed-modal.confirm-clear-chats", { count: chatCount }))
+    )
+      return;
+
+    const { success, deletedCount, error } = await Embed.clearEmbedChats(embed.id);
+    if (!success) {
+      showToast(error || t("embed-modal.clear-error"), "error", { clear: true });
+      return;
+    }
+
+    showToast(
+      t("embed-modal.chats-cleared", { count: deletedCount }),
+      "success",
+      { clear: true }
+    );
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center">
       <div className="relative w-full max-w-2xl bg-theme-bg-secondary rounded-lg shadow border-2 border-theme-modal-border">
@@ -51,7 +79,7 @@ export default function EditEmbedModal({ embed, closeModal }) {
         </div>
         <div className="px-7 py-6">
           <form onSubmit={handleUpdate}>
-            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto px-2">
               <WorkspaceSelection defaultValue={embed.workspace.id} />
               <ChatModeSelection defaultValue={embed.chat_mode} />
               <PermittedDomains
@@ -77,6 +105,56 @@ export default function EditEmbedModal({ embed, closeModal }) {
                 hint={t("embed-modal.message-limit.hint")}
                 defaultValue={embed.message_limit}
               />
+              <div className="flex flex-col gap-y-1">
+                <div className="flex flex-col mb-2">
+                  <label className="text-white text-sm font-semibold">
+                    {t("embed-modal.chat-retention.label")}
+                  </label>
+                  <p className="text-theme-text-secondary text-xs">
+                    {t("embed-modal.chat-retention.hint")}
+                  </p>
+                </div>
+                <select
+                  name="chat_retention_days"
+                  defaultValue={embed.chat_retention_days || ""}
+                  className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-[15rem] p-2.5"
+                >
+                  <option value="">
+                    {t("embed-modal.chat-retention.never")}
+                  </option>
+                  <option value="7">
+                    7 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="30">
+                    30 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="90">
+                    90 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="180">
+                    180 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="365">
+                    365 {t("embed-modal.chat-retention.days")}
+                  </option>
+                </select>
+              </div>
+              {embed._count.embed_chats > 0 && (
+                <div className="flex flex-col gap-y-1">
+                  <p className="text-theme-text-secondary text-xs">
+                    {t("embed-modal.clear-chats-hint")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleClearChats}
+                    className="flex items-center justify-center gap-x-2 px-4 py-2 rounded-lg border border-orange-400 text-orange-400 hover:border-transparent hover:text-white text-xs font-semibold hover:bg-orange-500 transition-all duration-200 w-[15rem]"
+                  >
+                    {t("embed-modal.clear-chats-button", {
+                      count: embed._count.embed_chats,
+                    })}
+                  </button>
+                </div>
+              )}
               <BooleanInput
                 name="allow_model_override"
                 title={t("embed-modal.model-override.label")}

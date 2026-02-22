@@ -62,12 +62,16 @@ function embeddedEndpoints(app) {
         const {
           sessionId,
           message,
+          conversationId = null, // NEW: Conversation ID from widget
           // optional keys for override of defaults if enabled.
           prompt = null,
           model = null,
           temperature = null,
           username = null,
         } = reqBody(request);
+
+        // Fallback: If no conversationId, use sessionId for backwards compatibility
+        const effectiveConversationId = conversationId || sessionId;
 
         response.setHeader("Cache-Control", "no-cache");
         response.setHeader("Content-Type", "text/event-stream");
@@ -76,6 +80,7 @@ function embeddedEndpoints(app) {
         response.flushHeaders();
 
         await streamChatWithForEmbed(response, embed, message, sessionId, {
+          conversationId: effectiveConversationId, // Pass conversation ID
           promptOverride: prompt,
           modelOverride: model,
           temperatureOverride: temperature,
@@ -125,13 +130,19 @@ function embeddedEndpoints(app) {
     async (request, response) => {
       try {
         const { sessionId } = request.params;
+        const { conversationId } = request.query; // Optional query param for conversation_id
         const embed = response.locals.embedConfig;
+
+        // Use conversationId if provided, otherwise fallback to sessionId
+        const identifier = conversationId || sessionId;
+        const identifierType = conversationId ? 'conversation_id' : 'session_id';
+
         const history = await EmbedChats.forEmbedByUser(
           embed.id,
-          sessionId,
+          identifier,
           null,
           null,
-          true
+          identifierType
         );
 
         response.status(200).json({ history: convertToChatHistory(history) });
@@ -148,9 +159,14 @@ function embeddedEndpoints(app) {
     async (request, response) => {
       try {
         const { sessionId } = request.params;
+        const { conversationId } = request.query; // Optional query param for conversation_id
         const embed = response.locals.embedConfig;
 
-        await EmbedChats.markHistoryInvalid(embed.id, sessionId);
+        // Use conversationId if provided, otherwise fallback to sessionId
+        const identifier = conversationId || sessionId;
+        const identifierType = conversationId ? 'conversation_id' : 'session_id';
+
+        await EmbedChats.markHistoryInvalid(embed.id, identifier, identifierType);
         response.status(200).end();
       } catch (e) {
         console.error(e.message, e);

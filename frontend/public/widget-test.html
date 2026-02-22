@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Test - Conversation ID</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .info-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #333; }
+        .step {
+            background: #e3f2fd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #2196f3;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-box">
+        <h1>🧪 Widget Test - Conversation ID</h1>
+        <p><strong>Test-Ablauf:</strong></p>
+
+        <div class="step">
+            <strong>1. Console öffnen</strong><br>
+            Drücke <code>F12</code> → Tab "Console"
+        </div>
+
+        <div class="step">
+            <strong>2. Widget öffnen</strong><br>
+            Klicke auf den Chat-Bubble (unten rechts)
+        </div>
+
+        <div class="step">
+            <strong>3. Erste Nachricht senden</strong><br>
+            Console prüfen: <code>Registering new conversation id</code> oder <code>Resuming conversation id</code><br>
+            → Conversation ID sollte UUID-Format haben (z.B. <code>f47ac10b-58cc-...</code>)
+        </div>
+
+        <div class="step">
+            <strong>4. "Clear Chat" klicken</strong><br>
+            3-Punkte-Menü → "Reset Chat"<br>
+            Console prüfen: <code>Resetting conversation id</code> mit NEUER UUID
+        </div>
+
+        <div class="step">
+            <strong>5. Zweite Nachricht senden</strong><br>
+            Console prüfen: Neue Conversation ID (anders als vorher!)
+        </div>
+
+        <div class="step">
+            <strong>6. Admin-Portal prüfen</strong><br>
+            Gehe zu <a href="http://localhost:3000/settings/embeds" target="_blank">Settings → Embeds → Verlauf</a><br>
+            → Sollten 2 separate Konversationen sichtbar sein!<br>
+            → Erste mit "🆕 NEU" Badge (<1h alt)
+        </div>
+    </div>
+
+    <div class="info-box">
+        <h2>📊 Erwartete Console-Logs</h2>
+        <pre style="background: #263238; color: #aed581; padding: 15px; border-radius: 4px; overflow-x: auto;">
+1. Erste Nachricht:
+   → Registering new conversation id f47ac10b-58cc-4372-a567-0e02b2c3d479
+
+2. Clear Chat:
+   → Resetting conversation id 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+
+3. Zweite Nachricht:
+   → Resuming conversation id 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+        </pre>
+    </div>
+
+    <!-- AnythingLLM Chat Widget -->
+    <script
+        data-embed-id="1"
+        data-base-api-url="http://localhost:3001/api/embed"
+        src="http://localhost:3000/embed/anythingllm-chat-widget.min.js">
+    </script>
+</body>
+</html>

@@ -1124,3 +1124,18 @@ does not extend the close button beyond the viewport. */
   -webkit-animation: fadein 0.3s linear forwards;
   animation: fadein 0.3s linear forwards;
 }
+
+/* Analytics Bot Response Text Fix - Use theme colors */
+.analytics-bot-response,
+.analytics-bot-response * {
+  color: var(--theme-text-primary) !important;
+}
+
+.analytics-bot-response p,
+.analytics-bot-response div,
+.analytics-bot-response span,
+.analytics-bot-response li,
+.analytics-bot-response strong,
+.analytics-bot-response em {
+  color: var(--theme-text-primary) !important;
+}

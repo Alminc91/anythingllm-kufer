@@ -67,6 +67,36 @@ yarn start        # Production Start
 - Billing/Usage Tracking pro Workspace
 - Deutsche Datumsformate überall
 
+## Coding Standards (beim Schreiben)
+
+### Backend (Node.js/Express/Prisma)
+
+- ✅ JSDoc-Kommentare für öffentliche Funktionen
+- ✅ Try-catch mit `console.error()` bei Fehlern
+- ✅ `Number()` für ID-Konvertierungen
+- ✅ `Prisma.sql` für SQL-Injection-Schutz
+- ✅ `validatedRequest` + `flexUserRoleValid` Middleware
+- ⚠️ N+1 Queries vermeiden (findMany mit `in`)
+- ⚠️ `include: true` Filter für DSGVO
+
+### Frontend (React/Vite/Tailwind)
+
+- ✅ `useTranslation()` - keine hardcoded Strings!
+- ✅ `formatDateTimeDE()` - nie ISO-Format direkt!
+- ✅ `toLocaleString("de-DE")` für Zahlen
+- ✅ `showToast()` für User-Feedback
+- ✅ Loading States + Empty States
+- ✅ Error-Handling mit Fallbacks (`|| []`)
+- ✅ Alle Dependencies in useEffect
+- ✅ Theme-Variablen (`bg-theme-*`)
+- ✅ Responsive (`md:`, `lg:`)
+
+### Pre-Commit
+
+**Claude ruft automatisch `/review-code` auf vor jedem Commit!**
+
+Details in: `.claude/skills/review-code.md`
+
 ## Related Projects
 
 - `anythingllm-embed/` - Embed Chat Widget (Submodul)

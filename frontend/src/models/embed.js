@@ -75,6 +75,102 @@ const Embed = {
         return { success: false, error: e.message };
       });
   },
+  // DSGVO: Clear all embed chats (globally)
+  clearAllChats: async () => {
+    return await fetch(`${API_BASE}/embed-chats/clear/-1`, {
+      method: "DELETE",
+      headers: baseHeaders(),
+    })
+      .then((res) => res.json())
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
+  // DSGVO: Clear all chats for a specific embed
+  clearEmbedChats: async (embedId) => {
+    return await fetch(`${API_BASE}/embed-chats/clear/${embedId}`, {
+      method: "DELETE",
+      headers: baseHeaders(),
+    })
+      .then((res) => res.json())
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
+
+  // Analytics: Get basic statistics overview
+  getAnalyticsOverview: async (embedId, startDate, endDate) => {
+    return await fetch(`${API_BASE}/embed/${embedId}/analytics/overview`, {
+      method: "POST",
+      headers: baseHeaders(),
+      body: JSON.stringify({ startDate, endDate }),
+    })
+      .then((res) => res.json())
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
+
+  // Analytics: Get conversations list
+  getConversations: async (
+    embedId,
+    offset = 0,
+    limit = 20,
+    startDate,
+    endDate
+  ) => {
+    return await fetch(
+      `${API_BASE}/embed/${embedId}/analytics/conversations`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+        body: JSON.stringify({ offset, limit, startDate, endDate }),
+      }
+    )
+      .then((res) => res.json())
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
+
+  // Analytics: Get conversation details
+  getConversationDetails: async (embedId, sessionId) => {
+    return await fetch(
+      `${API_BASE}/embed/${embedId}/conversation/${sessionId}`,
+      {
+        method: "GET",
+        headers: baseHeaders(),
+      }
+    )
+      .then((res) => res.json())
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
+
+  // Get conversations (global view, grouped by conversation_id)
+  getConversationsGlobal: async (
+    offset = 0,
+    limit = 20,
+    startDate,
+    endDate
+  ) => {
+    return await fetch(`${API_BASE}/embed/chats/conversations`, {
+      method: "POST",
+      headers: baseHeaders(),
+      body: JSON.stringify({ offset, limit, startDate, endDate }),
+    })
+      .then((res) => res.json())
+      .catch((e) => {
+        console.error(e);
+        return { success: false, error: e.message };
+      });
+  },
 };
 
 export default Embed;

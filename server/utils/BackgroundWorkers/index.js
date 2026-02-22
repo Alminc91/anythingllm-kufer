@@ -15,6 +15,11 @@ class BackgroundService {
       timeout: "1m",
       interval: "12hr",
     },
+    {
+      name: "cleanup-old-embed-chats",
+      timeout: "2m",
+      cron: "0 0 * * *", // DSGVO: Daily cleanup at midnight (00:00) based on retention policy
+    },
   ];
 
   #documentSyncJobs = [

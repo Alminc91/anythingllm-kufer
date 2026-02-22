@@ -250,6 +250,7 @@ model embed_configs {
   max_chats_per_day          Int?
   max_chats_per_session      Int?
   message_limit              Int?          @default(20)
+  chat_retention_days        Int? // DSGVO: Number of days to keep chats, null = keep forever
   workspace_id               Int
   createdBy                  Int?
   usersId                    Int?
@@ -264,6 +265,7 @@ model embed_chats {
   prompt                 String
   response               String
   session_id             String
+  conversation_id        String?       // Konversations-Gruppierung (für RAG Context Fix)
   include                Boolean       @default(true)
   connection_information String?
   embed_id               Int
@@ -271,6 +273,8 @@ model embed_chats {
   createdAt              DateTime      @default(now())
   embed_config           embed_configs @relation(fields: [embed_id], references: [id], onDelete: Cascade)
   users                  users?        @relation(fields: [usersId], references: [id])
+
+  @@index([conversation_id])
 }
 
 model event_logs {

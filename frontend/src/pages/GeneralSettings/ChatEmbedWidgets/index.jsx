@@ -4,6 +4,7 @@ import { isMobile } from "react-device-detect";
 import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import EmbedConfigsView from "./EmbedConfigs";
 import EmbedChatsView from "./EmbedChats";
+import EmbedAnalyticsView from "./EmbedAnalytics";
 import { useTranslation } from "react-i18next";
 
 export default function ChatEmbedWidgets() {
@@ -52,9 +53,11 @@ export default function ChatEmbedWidgets() {
                   <div className="bg-theme-bg-secondary text-white rounded-xl p-4 overflow-y-scroll no-scroll">
                     {selectedView === "configs" ? (
                       <EmbedConfigsView />
-                    ) : (
+                    ) : selectedView === "chats" ? (
                       <EmbedChatsView />
-                    )}
+                    ) : selectedView === "analytics" ? (
+                      <EmbedAnalyticsView />
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -88,9 +91,11 @@ export default function ChatEmbedWidgets() {
           <div className="bg-theme-bg-secondary text-white rounded-xl flex-1 p-4 overflow-y-scroll no-scroll">
             {selectedView === "configs" ? (
               <EmbedConfigsView />
-            ) : (
+            ) : selectedView === "chats" ? (
               <EmbedChatsView />
-            )}
+            ) : selectedView === "analytics" ? (
+              <EmbedAnalyticsView />
+            ) : null}
           </div>
         </div>
       </div>
@@ -123,6 +128,9 @@ function WidgetList({ selectedView, handleClick }) {
     },
     chats: {
       title: t("embed-widgets.history"),
+    },
+    analytics: {
+      title: t("embed-widgets.analytics"),
     },
   };
 

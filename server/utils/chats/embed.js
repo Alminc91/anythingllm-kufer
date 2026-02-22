@@ -16,7 +16,7 @@ async function streamChatWithForEmbed(
   message,
   /** @type {String} */
   sessionId,
-  { promptOverride, modelOverride, temperatureOverride, username }
+  { conversationId, promptOverride, modelOverride, temperatureOverride, username }
 ) {
   const chatMode = embed.chat_mode;
   const chatModel = embed.allow_model_override ? modelOverride : null;
@@ -80,7 +80,7 @@ async function streamChatWithForEmbed(
   let sources = [];
   let pinnedDocIdentifiers = [];
   const { rawHistory, chatHistory } = await recentEmbedChatHistory(
-    sessionId,
+    conversationId, // Use conversationId instead of sessionId for RAG context
     embed,
     messageLimit
   );
@@ -223,21 +223,26 @@ async function streamChatWithForEmbed(
         }
       : { username: !!username ? String(username) : null },
     sessionId,
+    conversationId, // Save conversation ID for grouping
   });
   return;
 }
 
 /**
- * @param {string} sessionId the session id of the user from embed widget
+ * @param {string} conversationId the conversation id (or session id for backwards compatibility)
  * @param {Object} embed the embed config object
  * @param {Number} messageLimit the number of messages to return
  * @returns {Promise<{rawHistory: import("@prisma/client").embed_chats[], chatHistory: {role: string, content: string, attachments?: Object[]}[]}>
  */
-async function recentEmbedChatHistory(sessionId, embed, messageLimit = 20) {
+async function recentEmbedChatHistory(conversationId, embed, messageLimit = 20) {
   const rawHistory = (
-    await EmbedChats.forEmbedByUser(embed.id, sessionId, messageLimit, {
-      id: "desc",
-    })
+    await EmbedChats.forEmbedByUser(
+      embed.id,
+      conversationId,
+      messageLimit,
+      { id: "desc" },
+      'conversation_id' // Use conversation_id field instead of session_id
+    )
   ).reverse();
   return { rawHistory, chatHistory: convertToPromptHistory(rawHistory) };
 }

@@ -59,7 +59,7 @@ export default function NewEmbedModal({ closeModal }) {
         </div>
         <div className="px-7 py-6">
           <form onSubmit={handleCreate}>
-            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2">
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto px-2">
               <WorkspaceSelection />
               <ChatModeSelection />
               <PermittedDomains />
@@ -79,6 +79,40 @@ export default function NewEmbedModal({ closeModal }) {
                 hint={t("embed-modal.message-limit.hint")}
                 defaultValue={20}
               />
+              <div>
+                <div className="flex flex-col mb-2">
+                  <label className="text-white text-sm font-semibold">
+                    {t("embed-modal.chat-retention.label")}
+                  </label>
+                  <p className="text-theme-text-secondary text-xs">
+                    {t("embed-modal.chat-retention.hint")}
+                  </p>
+                </div>
+                <select
+                  name="chat_retention_days"
+                  defaultValue=""
+                  className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-[15rem] p-2.5"
+                >
+                  <option value="">
+                    {t("embed-modal.chat-retention.never")}
+                  </option>
+                  <option value="7">
+                    7 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="30">
+                    30 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="90">
+                    90 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="180">
+                    180 {t("embed-modal.chat-retention.days")}
+                  </option>
+                  <option value="365">
+                    365 {t("embed-modal.chat-retention.days")}
+                  </option>
+                </select>
+              </div>
               <BooleanInput
                 name="allow_model_override"
                 title={t("embed-modal.model-override.label")}

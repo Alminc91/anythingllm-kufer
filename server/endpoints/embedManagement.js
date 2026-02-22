@@ -166,6 +166,215 @@ function embedManagementEndpoints(app) {
       }
     }
   );
+
+  // Get conversations (global view, grouped by conversation_id)
+  app.post(
+    "/embed/chats/conversations",
+    [chatHistoryViewable, validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
+    async (request, response) => {
+      try {
+        const user = await userFromSession(request, response);
+        const { offset = 0, limit = 20, startDate, endDate } = reqBody(request);
+
+        // Get all conversations (global view)
+        const conversations = await EmbedChats.getConversations(
+          null,  // NULL = global across all embeds
+          offset,
+          limit,
+          startDate ? new Date(startDate) : null,
+          endDate ? new Date(endDate) : null
+        );
+
+        // Filter by workspace permissions for default users
+        let filteredConversations = conversations;
+        if (user?.role === ROLES.default) {
+          const userWorkspaces = await WorkspaceUser.where({ user_id: user.id });
+          const workspaceIds = userWorkspaces.map(ws => ws.workspace_id);
+
+          // Get embed configs for user's workspaces
+          const allowedEmbeds = await EmbedConfig.where({
+            workspace_id: { in: workspaceIds }
+          });
+          const allowedEmbedIds = allowedEmbeds.map(e => e.id);
+
+          // Filter conversations
+          filteredConversations = conversations.filter(conv =>
+            allowedEmbedIds.includes(conv.embed_id)
+          );
+        }
+
+        // Count total conversations for pagination
+        const { Prisma } = require("@prisma/client");
+        const prisma = require("../utils/prisma");
+
+        const dateConditions = [];
+        if (startDate) {
+          dateConditions.push(Prisma.sql`AND createdAt >= ${new Date(startDate)}`);
+        }
+        if (endDate) {
+          dateConditions.push(Prisma.sql`AND createdAt <= ${new Date(endDate)}`);
+        }
+
+        const totalCount = await prisma.$queryRaw`
+          SELECT COUNT(DISTINCT COALESCE(conversation_id, session_id)) as count
+          FROM embed_chats
+          WHERE 1=1
+            ${dateConditions.length > 0 ? Prisma.join(dateConditions, " ") : Prisma.empty}
+            AND include = 1
+        `;
+
+        const hasMore = (offset + limit) < Number(totalCount[0]?.count || 0);
+
+        response.status(200).json({
+          success: true,
+          conversations: filteredConversations,
+          hasMore,
+        });
+      } catch (e) {
+        console.error(e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // Analytics: Get basic statistics for an embed
+  app.post(
+    "/embed/:embedId/analytics/overview",
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
+    async (request, response) => {
+      try {
+        const { embedId } = request.params;
+        const { startDate, endDate } = reqBody(request);
+
+        const stats = await EmbedChats.getBasicStats(
+          Number(embedId),
+          startDate ? new Date(startDate) : null,
+          endDate ? new Date(endDate) : null
+        );
+
+        response.status(200).json({ success: true, stats });
+      } catch (e) {
+        console.error(e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // Analytics: Get conversations list for an embed
+  app.post(
+    "/embed/:embedId/analytics/conversations",
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
+    async (request, response) => {
+      try {
+        const { embedId } = request.params;
+        const { offset = 0, limit = 20, startDate, endDate } = reqBody(request);
+
+        const conversations = await EmbedChats.getConversations(
+          Number(embedId),
+          offset,
+          limit,
+          startDate ? new Date(startDate) : null,
+          endDate ? new Date(endDate) : null
+        );
+
+        // Count total conversations for pagination
+        const { Prisma } = require("@prisma/client");
+        const prisma = require("../utils/prisma");
+
+        const dateConditions = [];
+        if (startDate) {
+          dateConditions.push(Prisma.sql`AND createdAt >= ${new Date(startDate)}`);
+        }
+        if (endDate) {
+          dateConditions.push(Prisma.sql`AND createdAt <= ${new Date(endDate)}`);
+        }
+
+        const totalCount = await prisma.$queryRaw`
+          SELECT COUNT(DISTINCT COALESCE(conversation_id, session_id)) as count
+          FROM embed_chats
+          WHERE embed_id = ${Number(embedId)}
+            ${dateConditions.length > 0 ? Prisma.join(dateConditions, " ") : Prisma.empty}
+            AND include = 1
+        `;
+
+        const hasMore = (offset + limit) < Number(totalCount[0]?.count || 0);
+
+        // Debug: Check for BigInt values
+        console.log("Conversations sample:", conversations[0]);
+        console.log("Types:", {
+          first: typeof conversations[0]?.first_chat_id,
+          count: typeof conversations[0]?.message_count,
+        });
+
+        response.status(200).json({
+          success: true,
+          conversations,
+          hasMore,
+        });
+      } catch (e) {
+        console.error(e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // Analytics: Get conversation details
+  app.get(
+    "/embed/:embedId/conversation/:sessionId",
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager, ROLES.default])],
+    async (request, response) => {
+      try {
+        const { embedId, sessionId } = request.params;
+
+        const messages = await EmbedChats.getConversationDetails(
+          sessionId,
+          Number(embedId)
+        );
+
+        response.status(200).json({ success: true, messages });
+      } catch (e) {
+        console.error(e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
+
+  // DSGVO: Clear all chats (global or per-embed)
+  app.delete(
+    "/embed-chats/clear/:embedId",
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager])],
+    async (request, response) => {
+      try {
+        const { embedId } = request.params;
+        const user = await userFromSession(request, response);
+
+        if (Number(embedId) === -1) {
+          // Global: Delete ALL embed chats
+          const count = await EmbedChats.count();
+          await EmbedChats.delete({});
+          await EventLogs.logEvent(
+            "embed_chats_cleared_all",
+            { deletedCount: count },
+            user?.id
+          );
+          response.status(200).json({ success: true, deletedCount: count });
+        } else {
+          // Per Widget: Delete all chats for this embed
+          const count = await EmbedChats.count({ embed_id: Number(embedId) });
+          await EmbedChats.delete({ embed_id: Number(embedId) });
+          await EventLogs.logEvent(
+            "embed_chats_cleared",
+            { embedId: Number(embedId), deletedCount: count },
+            user?.id
+          );
+          response.status(200).json({ success: true, deletedCount: count });
+        }
+      } catch (e) {
+        console.error(e);
+        response.sendStatus(500).end();
+      }
+    }
+  );
 }
 
 module.exports = { embedManagementEndpoints };

@@ -63,8 +63,9 @@ const TRANSLATIONS = {
     selection: "Model Selection",
     saving: "Saving...",
     save: "Save changes",
-    previous: "Previous Page",
-    next: "Next Page",
+    previous: "← Previous",
+    next: "Next →",
+    loading: "Loading...",
     optional: "Optional",
     yes: "Yes",
     no: "No",
@@ -669,7 +670,8 @@ const TRANSLATIONS = {
     title: "Embed Chat History",
     export: "Export",
     description:
-      "These are all the recorded chats and messages from any embed that you have published.",
+      "These are all the recorded conversations from any embed that you have published, grouped by conversation.",
+    "no-conversations": "No conversations found.",
     table: {
       embed: "Embed",
       sender: "Sender",
@@ -1119,6 +1121,31 @@ const TRANSLATIONS = {
         },
       },
     },
+  },
+  "embed-widgets": {
+    widgets: "Widgets",
+    history: "History",
+    analytics: "Analytics",
+  },
+  "embed-analytics": {
+    title: "Analytics Dashboard",
+    "load-error": "Error loading analytics data.",
+    "last-week": "Last Week",
+    "last-month": "Last Month",
+    "all-time": "All Time",
+    "statistics-title": "STATISTICS",
+    stats: {
+      "total-chats": "AI Messages",
+      conversations: "Conversations",
+      "words-prompt": "Words in Requests",
+      "avg-per-conv": "Avg per Conversation",
+    },
+    "conversations-title": "CONVERSATIONS",
+    "conversation-number": "Conversation #{{id}}",
+    messages: "Messages",
+    request: "Request",
+    response: "Response",
+    "no-conversations": "No conversations available.",
   },
 };
 
