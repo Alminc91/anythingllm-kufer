@@ -642,8 +642,8 @@ const TRANSLATIONS = {
   },
   "embed-widgets": {
     widgets: "Widgets",
-    history: "Verlauf",
-    analytics: "Analytics",
+    history: "Verlauf (klassisch)",
+    analytics: "Konversationen (neu)",
   },
   "embed-analytics": {
     title: "Analytics Dashboard",
