@@ -209,7 +209,9 @@ async function getPageContent({ link, captureAs = "text", headers = {} }) {
           if (captureAs === "html") return document.documentElement.innerHTML;
           return document.body.innerText;
         }, captureAs);
-        await browser.close();
+        // NOTE: outer scrape() finally-block closes the browser unconditionally,
+        // even if the caller of evaluate throws. Do not close here (would be a
+        // no-op anyway, but clarifies ownership).
         return result;
       },
     });
@@ -220,50 +222,74 @@ async function getPageContent({ link, captureAs = "text", headers = {} }) {
     let overrideHeaders = validatedHeaders(headers);
     loader.scrape = async function () {
       const { launch } = await PuppeteerWebBaseLoader.imports();
-      const browser = await launch({
-        headless: "new",
-        defaultViewport: null,
-        ignoreDefaultArgs: ["--disable-extensions"],
-        ...this.options?.launchOptions,
-      });
-      const page = await browser.newPage();
-      if (Object.keys(overrideHeaders).length > 0) {
-        await page.setExtraHTTPHeaders(overrideHeaders);
-      }
-
-      // Block non-essential resources that slow down text extraction
-      await page.setRequestInterception(true);
-      page.on('request', (req) => {
-        const type = req.resourceType();
-        const url = req.url();
-        if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
-          req.abort();
-        // Block chatbot widget scripts — they load synchronously from the
-        // AnythingLLM container itself and block DOMContentLoaded indefinitely
-        // (self-connection deadlock). Matches both ki.kufer.de and ki.kufer-test.de.
-        } else if (type === 'script' && /\.ki\.kufer(-test)?\.de\//.test(url)) {
-          req.abort();
-        } else {
-          req.continue();
+      let browser = null;
+      try {
+        browser = await launch({
+          headless: "new",
+          defaultViewport: null,
+          ignoreDefaultArgs: ["--disable-extensions"],
+          ...this.options?.launchOptions,
+        });
+        const page = await browser.newPage();
+        if (Object.keys(overrideHeaders).length > 0) {
+          await page.setExtraHTTPHeaders(overrideHeaders);
         }
-      });
 
-      await page.goto(this.webPath, {
-        timeout: 30000,
-        waitUntil: "domcontentloaded",
-      }).catch(() => {});
-      // Wait for JS frameworks to finish (readyState=complete), max 2s
-      await page.waitForFunction(
-        () => document.readyState === 'complete',
-        { timeout: 2000 }
-      ).catch(() => {});
+        // Block non-essential resources that slow down text extraction
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+          const type = req.resourceType();
+          const url = req.url();
+          if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+            req.abort();
+          // Block chatbot widget scripts — they load synchronously from the
+          // AnythingLLM container itself and block DOMContentLoaded indefinitely
+          // (self-connection deadlock). Matches both ki.kufer.de and ki.kufer-test.de.
+          } else if (type === 'script' && /\.ki\.kufer(-test)?\.de\//.test(url)) {
+            req.abort();
+          } else {
+            req.continue();
+          }
+        });
 
-      const bodyHTML = this.options?.evaluate
-        ? await this.options.evaluate(page, browser)
-        : await page.evaluate(() => document.body.innerHTML);
+        await page.goto(this.webPath, {
+          timeout: 30000,
+          waitUntil: "domcontentloaded",
+        }).catch(() => {});
+        // Wait for JS frameworks to finish (readyState=complete), max 2s
+        await page.waitForFunction(
+          () => document.readyState === 'complete',
+          { timeout: 2000 }
+        ).catch(() => {});
 
-      await browser.close();
-      return bodyHTML;
+        const bodyHTML = this.options?.evaluate
+          ? await this.options.evaluate(page, browser)
+          : await page.evaluate(() => document.body.innerHTML);
+
+        return bodyHTML;
+      } finally {
+        // Guarantee Chromium cleanup even if launch, navigation or evaluate throws.
+        // Root cause of the zombie accumulation (forum-unna: 1376/4d, intern: 1228/1.5d):
+        // target site Connection-Timeouts surfaced before the old `browser.close()`
+        // on the happy path could run. SIGKILL fallback handles the case where
+        // close() itself hangs (rare but seen on blocked hosts).
+        if (browser) {
+          try {
+            await Promise.race([
+              browser.close(),
+              new Promise((_, rej) => setTimeout(() => rej(new Error("close timeout")), 5000)),
+            ]);
+          } catch (closeErr) {
+            console.error("[cleanup] browser.close() failed, SIGKILL:", closeErr?.message || closeErr);
+            try {
+              const proc = browser.process();
+              if (proc && !proc.killed) proc.kill("SIGKILL");
+            } catch (killErr) {
+              console.error("[cleanup] SIGKILL failed:", killErr?.message || killErr);
+            }
+          }
+        }
+      }
     };
 
     const docs = await loader.load();
